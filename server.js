@@ -441,4 +441,5 @@ app.get('/api/logs', (req, res) => {
   res.json({ studentLogs: studentAttendanceLogs, staffLogs: staffShiftLogs, bookLogs });
 });
 
-app.listen(3000, () => console.log('Kumon Check-In System running on port 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));
