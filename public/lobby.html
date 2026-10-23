@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kumon Parent Lobby Board</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 30px; background: #00a0e9; color: white; }
+    h1 { font-size: 42px; text-align: center; margin-bottom: 30px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .card { background: white; color: #333; padding: 25px; border-radius: 12px; min-height: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+    h2 { margin-top: 0; font-size: 28px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    .card-studying h2 { color: #00a0e9; }
+    .card-pickup h2 { color: #28a745; }
+    ul { list-style: none; padding: 0; margin: 0; font-size: 22px; }
+    li { padding: 14px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .seat-tag { background: #eef7fc; color: #00a0e9; padding: 4px 12px; border-radius: 6px; font-weight: bold; font-size: 18px; }
+    .ready-tag { background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 6px; font-weight: bold; font-size: 18px; }
+  </style>
+</head>
+<body>
+
+<h1>Welcome to Kumon Learning Center</h1>
+
+<div class="grid">
+  <div class="card card-studying">
+    <h2>Students Currently Studying</h2>
+    <ul id="studyingList">
+      <li><span>Loading roster...</span></li>
+    </ul>
+  </div>
+
+  <div class="card card-pickup">
+    <h2>Ready for Parent Pickup</h2>
+    <ul id="pickupList">
+      <li><span>Loading pickup list...</span></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+async function updateLobby() {
+  try {
+    const res = await fetch('/api/lobby-board');
+    const data = await res.json();
+
+    const studyingEl = document.getElementById('studyingList');
+    if (data.studying.length === 0) {
+      studyingEl.innerHTML = '<li style="color:#888;">No students currently in center.</li>';
+    } else {
+      studyingEl.innerHTML = data.studying.map(s => 
+        `<li><strong>${s.firstName} ${s.lastNameInitial}</strong> <span class="seat-tag">${s.seatNumber}</span></li>`
+      ).join('');
+    }
+
+    const pickupEl = document.getElementById('pickupList');
+    if (data.readyForPickup.length === 0) {
+      pickupEl.innerHTML = '<li style="color:#888;">No students ready for pickup yet.</li>';
+    } else {
+      pickupEl.innerHTML = data.readyForPickup.map(p => 
+        `<li><strong style="color:#28a745;">${p.firstName} ${p.lastName ? p.lastName[0] + '.' : ''}</strong> <span class="ready-tag">Ready at ${p.readyTime}</span></li>`
+      ).join('');
+    }
+  } catch (err) {
+    console.error("Failed to load lobby board data", err);
+  }
+}
+
+setInterval(updateLobby, 5000);
+updateLobby();
+</script>
+
+</body>
+</html>
