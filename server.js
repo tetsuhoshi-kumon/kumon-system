@@ -4,7 +4,6 @@ const QRCode = require('qrcode');
 const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
-const mongoose = require('mongoose');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -13,196 +12,157 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// --- MongoDB Atlas Connection ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/kumon-system';
+const STUDENT_FILE = 'students.json';
+const EMPLOYEE_FILE = 'employees.json';
+const BOOK_FILE = 'books.json';
+const SHIFT_LOG_FILE = 'staff_shift_logs.json';
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Successfully connected to MongoDB Atlas!'))
-  .catch(err => console.error('MongoDB connection error:', err));
+function loadJSON(file) {
+  if (fs.existsSync(file)) {
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch (err) { return []; }
+  }
+  return [];
+}
 
-// --- Mongoose Schemas & Models ---
-const studentSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  firstName: String,
-  lastName: String,
-  subject: { type: String, default: 'Math' },
-  parentPhone: String
-});
+function saveJSON(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+}
 
-const employeeSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  firstName: String,
-  lastName: String,
-  role: { type: String, default: 'Assistant' }
-});
+const students = loadJSON(STUDENT_FILE);
+const employees = loadJSON(EMPLOYEE_FILE);
+const books = loadJSON(BOOK_FILE);
+const staffShiftLogs = loadJSON(SHIFT_LOG_FILE);
 
-const bookSchema = new mongoose.Schema({
-  assetTag: { type: String, required: true, unique: true },
-  isbn: String,
-  title: String,
-  level: String,
-  condition: { type: String, default: 'Good' }
-});
-
-const staffShiftLogSchema = new mongoose.Schema({
-  role: String,
-  id: String,
-  lastName: String,
-  firstName: String,
-  clockIn: String,
-  clockOut: String,
-  durationMinutes: Number,
-  hoursWorked: Number,
-  date: String
-});
-
-const studentAttendanceLogSchema = new mongoose.Schema({
-  subject: String,
-  studentId: String,
-  lastName: String,
-  firstName: String,
-  checkIn: String,
-  checkOut: String,
-  durationMinutes: Number,
-  date: String
-});
-
-const Student = mongoose.model('Student', studentSchema);
-const Employee = mongoose.model('Employee', employeeSchema);
-const Book = mongoose.model('Book', bookSchema);
-const StaffShiftLog = mongoose.model('StaffShiftLog', staffShiftLogSchema);
-const StudentAttendanceLog = mongoose.model('StudentAttendanceLog', studentAttendanceLogSchema);
-
-// In-Memory Active Sessions (for real-time live seat dashboard)
 const activeStudentSessions = new Map();
 const activeStaffSessions = new Map();
 const checkedOutBooks = new Map();
 const readyForPickupList = [];
 
+const studentAttendanceLogs = [];
+const bookLogs = [];
+
 // 1. Unified Scan Route
-app.post('/api/scan', async (req, res) => {
+app.post('/api/scan', (req, res) => {
   const { scanId, seatNumber } = req.body;
   const cleanId = String(scanId || '').trim();
   const now = new Date();
 
-  try {
-    // Check Staff Clock-In / Clock-Out
-    const staffMember = await Employee.findOne({ id: cleanId });
-    if (staffMember) {
-      if (activeStaffSessions.has(staffMember.id)) {
-        const session = activeStaffSessions.get(staffMember.id);
-        const durationMinutes = Math.round((now - session.checkInTime) / 60000);
-        const hours = (durationMinutes / 60).toFixed(2);
+  // Check Staff Clock-In / Clock-Out
+  const staffMember = employees.find(e => String(e.id).trim() === cleanId);
+  if (staffMember) {
+    if (activeStaffSessions.has(staffMember.id)) {
+      const session = activeStaffSessions.get(staffMember.id);
+      const durationMinutes = Math.round((now - session.checkInTime) / 60000);
+      const hours = (durationMinutes / 60).toFixed(2);
 
-        const logEntry = new StaffShiftLog({
-          role: staffMember.role,
-          id: staffMember.id,
-          lastName: staffMember.lastName,
-          firstName: staffMember.firstName,
-          clockIn: session.checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          durationMinutes,
-          hoursWorked: parseFloat(hours),
-          date: now.toISOString().split('T')[0]
-        });
+      const logEntry = {
+        role: staffMember.role,
+        id: staffMember.id,
+        lastName: staffMember.lastName,
+        firstName: staffMember.firstName,
+        clockIn: session.checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        clockOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        durationMinutes,
+        hoursWorked: parseFloat(hours),
+        date: now.toISOString().split('T')[0]
+      };
 
-        await logEntry.save();
-        activeStaffSessions.delete(staffMember.id);
+      staffShiftLogs.push(logEntry);
+      saveJSON(SHIFT_LOG_FILE, staffShiftLogs);
+      activeStaffSessions.delete(staffMember.id);
 
-        return res.json({
-          type: "STAFF",
-          action: "CHECK_OUT",
-          firstName: staffMember.firstName,
-          lastName: staffMember.lastName,
-          message: `Staff Clock-Out: ${staffMember.firstName} ${staffMember.lastName} (${hours} hrs worked).`,
-          log: logEntry
-        });
-      } else {
-        const session = {
-          role: staffMember.role,
-          id: staffMember.id,
-          lastName: staffMember.lastName,
-          firstName: staffMember.firstName,
-          checkInTime: now
-        };
-        activeStaffSessions.set(staffMember.id, session);
+      return res.json({
+        type: "STAFF",
+        action: "CHECK_OUT",
+        firstName: staffMember.firstName,
+        lastName: staffMember.lastName,
+        message: `Staff Clock-Out: ${staffMember.firstName} ${staffMember.lastName} (${hours} hrs worked).`,
+        log: logEntry
+      });
+    } else {
+      const session = {
+        role: staffMember.role,
+        id: staffMember.id,
+        lastName: staffMember.lastName,
+        firstName: staffMember.firstName,
+        checkInTime: now
+      };
+      activeStaffSessions.set(staffMember.id, session);
 
-        return res.json({
-          type: "STAFF",
-          action: "CHECK_IN",
-          firstName: staffMember.firstName,
-          lastName: staffMember.lastName,
-          message: `Staff Clock-In: ${staffMember.firstName} ${staffMember.lastName} (${staffMember.role}).`,
-          session
-        });
-      }
+      return res.json({
+        type: "STAFF",
+        action: "CHECK_IN",
+        firstName: staffMember.firstName,
+        lastName: staffMember.lastName,
+        message: `Staff Clock-In: ${staffMember.firstName} ${staffMember.lastName} (${staffMember.role}).`,
+        session
+      });
     }
-
-    // Check Student Check-In / Check-Out
-    const student = await Student.findOne({ id: cleanId });
-    if (student) {
-      if (activeStudentSessions.has(student.id)) {
-        const session = activeStudentSessions.get(student.id);
-        const durationMinutes = Math.round((now - session.checkInTime) / 60000);
-
-        const logEntry = new StudentAttendanceLog({
-          subject: student.subject,
-          studentId: student.id,
-          lastName: student.lastName,
-          firstName: student.firstName,
-          checkIn: session.checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          checkOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          durationMinutes,
-          date: now.toISOString().split('T')[0]
-        });
-
-        await logEntry.save();
-        activeStudentSessions.delete(student.id);
-
-        const pIdx = readyForPickupList.findIndex(p => p.studentId === student.id);
-        if (pIdx >= 0) readyForPickupList.splice(pIdx, 1);
-
-        return res.json({
-          type: "STUDENT",
-          action: "CHECK_OUT",
-          firstName: student.firstName,
-          lastName: student.lastName,
-          subject: student.subject,
-          message: `${student.firstName} ${student.lastName} checked out. Time in center: ${durationMinutes} mins.`,
-          log: logEntry
-        });
-      } else {
-        const session = {
-          subject: student.subject,
-          studentId: student.id,
-          lastName: student.lastName,
-          firstName: student.firstName,
-          parentPhone: student.parentPhone || '',
-          seatNumber: seatNumber || "Unassigned",
-          checkInTime: now
-        };
-        activeStudentSessions.set(student.id, session);
-
-        return res.json({
-          type: "STUDENT",
-          action: "CHECK_IN",
-          firstName: student.firstName,
-          lastName: student.lastName,
-          subject: student.subject,
-          seatNumber: session.seatNumber,
-          message: `${student.firstName} ${student.lastName} checked in at ${session.seatNumber}.`,
-          session
-        });
-      }
-    }
-
-    return res.status(404).json({ success: false, message: "Scanned ID not recognized as Student or Staff." });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Database transaction error." });
   }
+
+  // Check Student Check-In / Check-Out
+  const student = students.find(s => String(s.id).trim() === cleanId);
+  if (student) {
+    if (activeStudentSessions.has(student.id)) {
+      const session = activeStudentSessions.get(student.id);
+      const durationMinutes = Math.round((now - session.checkInTime) / 60000);
+
+      const logEntry = {
+        subject: student.subject,
+        studentId: student.id,
+        lastName: student.lastName,
+        firstName: student.firstName,
+        checkIn: session.checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        checkOut: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        durationMinutes,
+        date: now.toISOString().split('T')[0]
+      };
+
+      studentAttendanceLogs.push(logEntry);
+      activeStudentSessions.delete(student.id);
+
+      const pIdx = readyForPickupList.findIndex(p => p.studentId === student.id);
+      if (pIdx >= 0) readyForPickupList.splice(pIdx, 1);
+
+      return res.json({
+        type: "STUDENT",
+        action: "CHECK_OUT",
+        firstName: student.firstName,
+        lastName: student.lastName,
+        subject: student.subject,
+        message: `${student.firstName} ${student.lastName} checked out. Time in center: ${durationMinutes} mins.`,
+        log: logEntry
+      });
+    } else {
+      const session = {
+        subject: student.subject,
+        studentId: student.id,
+        lastName: student.lastName,
+        firstName: student.firstName,
+        parentPhone: student.parentPhone || '',
+        seatNumber: seatNumber || "Unassigned",
+        checkInTime: now
+      };
+      activeStudentSessions.set(student.id, session);
+
+      return res.json({
+        type: "STUDENT",
+        action: "CHECK_IN",
+        firstName: student.firstName,
+        lastName: student.lastName,
+        subject: student.subject,
+        seatNumber: session.seatNumber,
+        message: `${student.firstName} ${student.lastName} checked in at ${session.seatNumber}.`,
+        session
+      });
+    }
+  }
+
+  return res.status(404).json({ success: false, message: "Scanned ID not recognized as Student or Staff." });
 });
 
-// 2. Mark Student Ready for Parent Pickup
+// 2. Mark Ready for Pickup
 app.post('/api/ready-pickup', (req, res) => {
   const { studentId } = req.body;
   const session = activeStudentSessions.get(studentId);
@@ -222,7 +182,7 @@ app.post('/api/ready-pickup', (req, res) => {
   res.json({ success: true, message: `${session.firstName} ${session.lastName} marked READY FOR PICKUP!` });
 });
 
-// 3. Parent Lobby Board Endpoint
+// 3. Lobby Board
 app.get('/api/lobby-board', (req, res) => {
   const studying = Array.from(activeStudentSessions.values()).map(s => ({
     firstName: s.firstName,
@@ -234,88 +194,138 @@ app.get('/api/lobby-board', (req, res) => {
   res.json({ studying, readyForPickup: readyForPickupList });
 });
 
-// 4. Library Checkout / Return Route
-app.post('/api/library/scan', async (req, res) => {
+// 4. Library Checkout / Return
+app.post('/api/library/scan', (req, res) => {
   const { studentId, assetTag, newCondition } = req.body;
   const cleanAsset = String(assetTag || '').trim();
   const cleanStudent = String(studentId || '').trim();
 
-  try {
-    const bookCopy = await Book.findOne({ assetTag: cleanAsset });
-    if (!bookCopy) return res.status(404).json({ success: false, message: `Book Asset Tag "${cleanAsset}" not found.` });
+  const bookCopy = books.find(b => String(b.assetTag).trim() === cleanAsset);
+  if (!bookCopy) return res.status(404).json({ success: false, message: `Book Asset Tag "${cleanAsset}" not found.` });
 
-    const now = new Date();
+  const now = new Date();
 
-    if (checkedOutBooks.has(bookCopy.assetTag)) {
-      const session = checkedOutBooks.get(bookCopy.assetTag);
-      if (newCondition) {
-        bookCopy.condition = newCondition;
-        await bookCopy.save();
-      }
+  if (checkedOutBooks.has(bookCopy.assetTag)) {
+    const session = checkedOutBooks.get(bookCopy.assetTag);
+    if (newCondition) bookCopy.condition = newCondition;
 
-      checkedOutBooks.delete(bookCopy.assetTag);
-      return res.json({ action: "RETURN", message: `Returned "${bookCopy.title}".` });
-    } else {
-      const student = await Student.findOne({ id: cleanStudent });
-      if (!student) return res.status(404).json({ success: false, message: "Valid Student ID required to check out." });
+    const logEntry = {
+      assetTag: bookCopy.assetTag,
+      title: bookCopy.title,
+      studentName: session.studentName,
+      studentId: session.studentId,
+      checkoutDate: session.checkoutDate,
+      returnDate: now.toISOString().split('T')[0],
+      condition: bookCopy.condition
+    };
 
-      const session = {
-        assetTag: bookCopy.assetTag,
-        title: bookCopy.title,
-        level: bookCopy.level,
-        studentId: student.id,
-        studentName: `${student.firstName} ${student.lastName}`,
-        checkoutDate: now.toISOString().split('T')[0]
-      };
+    bookLogs.push(logEntry);
+    checkedOutBooks.delete(bookCopy.assetTag);
+    saveJSON(BOOK_FILE, books);
 
-      checkedOutBooks.set(bookCopy.assetTag, session);
-      return res.json({ action: "CHECKOUT", message: `Checked out "${bookCopy.title}" to ${student.firstName} ${student.lastName}!`, session });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Library scan failure." });
+    return res.json({ action: "RETURN", message: `Returned "${bookCopy.title}".`, log: logEntry });
+  } else {
+    const student = students.find(s => String(s.id).trim() === cleanStudent);
+    if (!student) return res.status(404).json({ success: false, message: "Valid Student ID required to check out." });
+
+    const session = {
+      assetTag: bookCopy.assetTag,
+      title: bookCopy.title,
+      level: bookCopy.level,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      checkoutDate: now.toISOString().split('T')[0]
+    };
+
+    checkedOutBooks.set(bookCopy.assetTag, session);
+    return res.json({ action: "CHECKOUT", message: `Checked out "${bookCopy.title}" to ${student.firstName} ${student.lastName}!`, session });
   }
 });
 
 // 5. Payroll Summary
-app.get('/api/payroll-summary', async (req, res) => {
-  try {
-    const employees = await Employee.find();
-    const staffShiftLogs = await StaffShiftLog.find();
-    const summaryMap = new Map();
+app.get('/api/payroll-summary', (req, res) => {
+  const summaryMap = new Map();
 
-    employees.forEach(emp => {
-      summaryMap.set(emp.id, {
-        id: emp.id,
-        firstName: emp.firstName,
-        lastName: emp.lastName,
-        role: emp.role,
-        totalShifts: 0,
-        totalMinutes: 0,
-        totalHours: 0
-      });
+  employees.forEach(emp => {
+    summaryMap.set(emp.id, {
+      id: emp.id,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      role: emp.role,
+      totalShifts: 0,
+      totalMinutes: 0,
+      totalHours: 0
     });
+  });
 
-    staffShiftLogs.forEach(log => {
-      if (summaryMap.has(log.id)) {
-        const record = summaryMap.get(log.id);
-        record.totalShifts += 1;
-        record.totalMinutes += log.durationMinutes || 0;
-        record.totalHours = (record.totalMinutes / 60).toFixed(2);
-      }
-    });
+  staffShiftLogs.forEach(log => {
+    if (summaryMap.has(log.id)) {
+      const record = summaryMap.get(log.id);
+      record.totalShifts += 1;
+      record.totalMinutes += log.durationMinutes || 0;
+      record.totalHours = (record.totalMinutes / 60).toFixed(2);
+    }
+  });
 
-    res.json(Array.from(summaryMap.values()));
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch payroll summary." });
-  }
+  res.json(Array.from(summaryMap.values()));
 });
 
-app.post('/api/reset-payroll', async (req, res) => {
-  await StaffShiftLog.deleteMany({});
+app.post('/api/reset-payroll', (req, res) => {
+  staffShiftLogs.length = 0;
+  saveJSON(SHIFT_LOG_FILE, staffShiftLogs);
   res.json({ success: true, message: "Payroll cycle reset successfully. New 2-week period started!" });
 });
 
-// Active Dashboard Endpoints
+app.get('/api/export-payroll', (req, res) => {
+  const summaryMap = new Map();
+  employees.forEach(emp => {
+    summaryMap.set(emp.id, {
+      id: emp.id,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      role: emp.role,
+      totalShifts: 0,
+      totalMinutes: 0,
+      totalHours: 0
+    });
+  });
+
+  staffShiftLogs.forEach(log => {
+    if (summaryMap.has(log.id)) {
+      const record = summaryMap.get(log.id);
+      record.totalShifts += 1;
+      record.totalMinutes += log.durationMinutes || 0;
+      record.totalHours = (record.totalMinutes / 60).toFixed(2);
+    }
+  });
+
+  let csvContent = "Employee ID,Last Name,First Name,Role,Total Shifts,Total Minutes,Total Hours Worked\n";
+  summaryMap.forEach(r => {
+    csvContent += `"${r.id}","${r.lastName}","${r.firstName}","${r.role}","${r.totalShifts}","${r.totalMinutes}","${r.totalHours}"\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="Kumon_Payroll_Export.csv"');
+  res.send(csvContent);
+});
+
+app.get('/api/export-attendance', (req, res) => {
+  let csvContent = "Date,Type,Student/Staff ID,Last Name,First Name,Subject/Role,Check-In,Check-Out,Duration\n";
+
+  studentAttendanceLogs.forEach(l => {
+    csvContent += `"${l.date}","Student","${l.studentId}","${l.lastName}","${l.firstName}","${l.subject}","${l.checkIn}","${l.checkOut}","${l.durationMinutes} mins"\n`;
+  });
+
+  staffShiftLogs.forEach(l => {
+    csvContent += `"${l.date}","Staff","${l.id}","${l.lastName}","${l.firstName}","${l.role}","${l.clockIn}","${l.clockOut}","${l.hoursWorked} hrs"\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="Kumon_Attendance_Export.csv"');
+  res.send(csvContent);
+});
+
+// Active Query Endpoints
 app.get('/api/active-students', (req, res) => {
   res.json(Array.from(activeStudentSessions.values()).map(s => ({
     ...s,
@@ -335,42 +345,32 @@ app.get('/api/active-staff', (req, res) => {
 
 app.get('/api/active-books', (req, res) => { res.json(Array.from(checkedOutBooks.values())); });
 
-app.post('/api/employees', async (req, res) => {
+app.post('/api/employees', (req, res) => {
   const { id, firstName, lastName, role } = req.body;
-  await Employee.findOneAndUpdate(
-    { id: String(id).trim() },
-    { id: String(id).trim(), firstName: String(firstName).trim(), lastName: String(lastName).trim(), role: role || "Assistant" },
-    { upsert: true, new: true }
-  );
-  res.json({ success: true, message: `Saved employee ${firstName} ${lastName}!` });
+  employees.push({ id: String(id).trim(), firstName: String(firstName).trim(), lastName: String(lastName).trim(), role: role || "Assistant" });
+  saveJSON(EMPLOYEE_FILE, employees);
+  res.json({ success: true, message: `Added employee ${firstName} ${lastName}!` });
 });
 
-app.post('/api/students', async (req, res) => {
+app.post('/api/students', (req, res) => {
   const { subject, id, lastName, firstName, parentPhone } = req.body;
-  await Student.findOneAndUpdate(
-    { id: String(id).trim() },
-    { subject: subject || "Math", id: String(id).trim(), lastName: String(lastName).trim(), firstName: String(firstName).trim(), parentPhone: parentPhone || "" },
-    { upsert: true, new: true }
-  );
-  res.json({ success: true, message: `Saved ${firstName} ${lastName} successfully!` });
+  students.push({ subject: subject || "Math", id: String(id).trim(), lastName: String(lastName).trim(), firstName: String(firstName).trim(), parentPhone: parentPhone || "" });
+  saveJSON(STUDENT_FILE, students);
+  res.json({ success: true, message: `Added ${firstName} ${lastName} successfully!` });
 });
 
 app.get('/api/students-qr', async (req, res) => {
-  const students = await Student.find();
-  const list = await Promise.all(students.map(async s => ({ ...s.toObject(), qrCode: await QRCode.toDataURL(String(s.id)) })));
+  const list = await Promise.all(students.map(async s => ({ ...s, qrCode: await QRCode.toDataURL(String(s.id)) })));
   res.json(list);
 });
 
 app.get('/api/employees-qr', async (req, res) => {
-  const employees = await Employee.find();
-  const list = await Promise.all(employees.map(async e => ({ ...e.toObject(), qrCode: await QRCode.toDataURL(String(e.id)) })));
+  const list = await Promise.all(employees.map(async e => ({ ...e, qrCode: await QRCode.toDataURL(String(e.id)) })));
   res.json(list);
 });
 
-app.get('/api/logs', async (req, res) => {
-  const studentLogs = await StudentAttendanceLog.find();
-  const staffLogs = await StaffShiftLog.find();
-  res.json({ studentLogs, staffLogs, bookLogs: [] });
+app.get('/api/logs', (req, res) => {
+  res.json({ studentLogs: studentAttendanceLogs, staffLogs: staffShiftLogs, bookLogs });
 });
 
 const PORT = process.env.PORT || 3000;
