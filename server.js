@@ -202,7 +202,94 @@ app.post('/api/scan', async (req, res) => {
   }
 });
 
-// --- 2. Pickup & Lobby Board ---
+// --- 2. Direct Manual Check-Out Endpoints ---
+app.post('/api/checkout', async (req, res) => {
+  const { studentId } = req.body;
+  const cleanId = String(studentId || '').trim();
+  const now = new Date();
+
+  try {
+    const student = await Student.findOne({ id: cleanId });
+    if (!student) {
+      return res.status(404).json({ success: false, message: `Student ID "${cleanId}" not found.` });
+    }
+
+    const session = activeStudentSessions.get(cleanId);
+    const startTime = session ? session.checkInTime : now;
+    const durationMinutes = Math.round((now - startTime) / 60000);
+
+    const logEntry = new StudentAttendanceLog({
+      subject: student.subject,
+      studentId: student.id,
+      lastName: student.lastName,
+      firstName: student.firstName,
+      checkIn: session ? getTime(session.checkInTime) : getTime(now),
+      checkOut: getTime(now),
+      durationMinutes,
+      date: getDate(now)
+    });
+
+    await logEntry.save();
+
+    if (activeStudentSessions.has(cleanId)) activeStudentSessions.delete(cleanId);
+    const pIdx = readyForPickupList.findIndex(p => p.studentId === cleanId);
+    if (pIdx >= 0) readyForPickupList.splice(pIdx, 1);
+
+    res.json({
+      success: true,
+      message: `${student.firstName} ${student.lastName} checked out. Duration: ${durationMinutes} mins.`,
+      log: logEntry
+    });
+  } catch (err) {
+    console.error('Direct Checkout Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to process checkout.' });
+  }
+});
+
+app.post('/api/staff-checkout', async (req, res) => {
+  const { employeeId } = req.body;
+  const cleanId = String(employeeId || '').trim();
+  const now = new Date();
+
+  try {
+    const employee = await Employee.findOne({ id: cleanId });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: `Employee ID "${cleanId}" not found.` });
+    }
+
+    const session = activeStaffSessions.get(cleanId);
+    const startTime = session ? session.checkInTime : now;
+    const durationMinutes = Math.round((now - startTime) / 60000);
+    const hours = (durationMinutes / 60).toFixed(2);
+
+    const logEntry = new StaffShiftLog({
+      role: employee.role,
+      id: employee.id,
+      lastName: employee.lastName,
+      firstName: employee.firstName,
+      clockIn: session ? getTime(session.checkInTime) : getTime(now),
+      clockOut: getTime(now),
+      durationMinutes,
+      hoursWorked: parseFloat(hours),
+      date: getDate(now)
+    });
+
+    await logEntry.save();
+
+    if (activeStaffSessions.has(cleanId)) activeStaffSessions.delete(cleanId);
+
+    res.json({
+      success: true,
+      message: `Staff Clock-Out: ${employee.firstName} ${employee.lastName} (${hours} hrs worked).`,
+      log: logEntry
+    });
+  } catch (err) {
+    console.error('Staff Clockout Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to process staff clock out.' });
+  }
+});
+
+// --- 3. Pickup & Lobby Board ---
 app.post('/api/ready-pickup', (req, res) => {
   const { studentId } = req.body;
   const session = activeStudentSessions.get(studentId);
@@ -233,7 +320,7 @@ app.get('/api/lobby-board', (req, res) => {
   res.json({ studying, readyForPickup: readyForPickupList });
 });
 
-// --- 3. Student Management (Add, Get QR, Edit, Delete) ---
+// --- 4. Student Management (Add, QR, Edit, Delete) ---
 app.post('/api/students', async (req, res) => {
   const { subject, id, lastName, firstName, parentPhone } = req.body;
   await Student.findOneAndUpdate(
@@ -316,7 +403,7 @@ app.get('/api/students-qr', async (req, res) => {
   res.json(list);
 });
 
-// --- 4. Employee Management (Add, Get QR, Edit, Delete) ---
+// --- 5. Employee Management (Add, QR, Edit, Delete) ---
 app.post('/api/employees', async (req, res) => {
   const { id, firstName, lastName, role } = req.body;
   await Employee.findOneAndUpdate(
@@ -387,7 +474,7 @@ app.get('/api/employees-qr', async (req, res) => {
   res.json(list);
 });
 
-// --- 5. CSV Roster Bulk Upload ---
+// --- 6. CSV Bulk Upload ---
 app.post('/api/upload-roster', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
 
@@ -425,7 +512,7 @@ app.post('/api/upload-roster', upload.single('file'), (req, res) => {
     });
 });
 
-// --- 6. Active Live Dashboards & Payroll ---
+// --- 7. Dashboards & Payroll ---
 app.get('/api/active-students', (req, res) => {
   res.json(Array.from(activeStudentSessions.values()).map(s => ({
     ...s,
@@ -481,7 +568,7 @@ app.post('/api/reset-payroll', async (req, res) => {
   res.json({ success: true, message: "Payroll cycle reset successfully." });
 });
 
-// --- 7. CSV Exports with Date Filtering ---
+// --- 8. Filtered CSV Exports ---
 app.get('/api/export/student-logs', async (req, res) => {
   const { startDate, endDate } = req.query;
 
