@@ -67,27 +67,92 @@
     }
 
     /* Print Formatting for Avery 8160 (3 cols x 10 rows) */
+    /* Print Formatting for Avery 5160 / 8160 */
     @media print {
-      body { background: white; margin: 0; }
-      header, nav, .no-print, input, button { display: none !important; }
-      .container { max-width: 100%; margin: 0; padding: 0; }
-      .view-card { border: none; box-shadow: none; padding: 0; margin: 0; }
+      @page {
+        size: letter portrait;
+        margin: 0; /* Let body control exact sheet margins */
+      }
+
+      *, *:before, *:after {
+        box-sizing: border-box !important;
+      }
+
+      html, body {
+        width: 8.5in;
+        height: 11in;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+
+      header, nav, .no-print, input, button, select, h2, h3, h4, p {
+        display: none !important;
+      }
+
+      .container, .view-card {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+      }
+
       .badge-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 2.625in);
-        column-gap: 0.125in;
-        row-gap: 0;
-        margin: 0.5in 0.1875in;
+        display: grid !important;
+        grid-template-columns: 2.625in 2.625in 2.625in !important;
+        grid-auto-rows: 1.0in !important;
+        column-gap: 0.125in !important;
+        row-gap: 0 !important;
+        
+        /* Exact Avery 5160 Sheet Padding */
+        padding-top: 0.5in !important;
+        padding-left: 0.1875in !important;
+        padding-right: 0.1875in !important;
+        margin: 0 !important;
+        width: 8.5in !important;
       }
+
       .badge-card {
-        height: 1in;
-        border: none;
-        padding: 0.05in;
-        box-sizing: border-box;
-        page-break-inside: avoid;
+        width: 2.625in !important;
+        height: 1.0in !important;
+        max-height: 1.0in !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0.08in 0.12in !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        overflow: hidden !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
-      .badge-qr { width: 0.85in; height: 0.85in; }
-      .badge-spacer { visibility: hidden !important; }
+
+      .badge-info {
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        overflow: hidden;
+      }
+
+      .badge-info strong {
+        font-size: 11px !important;
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .badge-qr {
+        width: 0.82in !important;
+        height: 0.82in !important;
+        flex-shrink: 0 !important;
+        margin-left: 4px !important;
+      }
+
+      .badge-spacer {
+        visibility: hidden !important;
+        border: none !important;
+        height: 1.0in !important;
+      }
     }
   </style>
 </head>
