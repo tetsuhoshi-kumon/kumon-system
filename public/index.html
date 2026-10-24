@@ -68,10 +68,11 @@
 
     /* Print Formatting for Avery 8160 (3 cols x 10 rows) */
     /* Print Formatting for Avery 5160 / 8160 */
+    /* Print Formatting for Avery 5160 / 8160 */
     @media print {
       @page {
         size: letter portrait;
-        margin: 0; /* Let body control exact sheet margins */
+        margin: 0; /* Let .sheet-page control margins precisely */
       }
 
       *, *:before, *:after {
@@ -79,8 +80,6 @@
       }
 
       html, body {
-        width: 8.5in;
-        height: 11in;
         margin: 0 !important;
         padding: 0 !important;
         background: white !important;
@@ -99,34 +98,37 @@
         background: transparent !important;
       }
 
-      .badge-grid {
-        display: grid !important;
-        grid-template-columns: 2.625in 2.625in 2.625in !important;
-        grid-auto-rows: 1.0in !important;
-        column-gap: 0.125in !important;
-        row-gap: 0 !important;
-        
-        /* Exact Avery 5160 Sheet Padding */
+      /* Each sheet is strictly 8.5" x 11" Letter */
+      .sheet-page {
+        width: 8.5in !important;
+        height: 11in !important;
+        max-height: 11in !important;
+        page-break-after: always !important;
+        break-after: page !important;
         padding-top: 0.5in !important;
+        padding-bottom: 0.5in !important;
         padding-left: 0.1875in !important;
         padding-right: 0.1875in !important;
-        margin: 0 !important;
-        width: 8.5in !important;
+        box-sizing: border-box !important;
+        display: grid !important;
+        grid-template-columns: 2.625in 2.625in 2.625in !important;
+        grid-template-rows: repeat(10, 1.0in) !important;
+        column-gap: 0.125in !important;
+        row-gap: 0 !important;
+        overflow: hidden !important;
       }
 
       .badge-card {
         width: 2.625in !important;
         height: 1.0in !important;
-        max-height: 1.0in !important;
         border: none !important;
         margin: 0 !important;
         padding: 0.08in 0.12in !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
+        box-sizing: border-box !important;
         overflow: hidden !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
       }
 
       .badge-info {
@@ -152,6 +154,7 @@
         visibility: hidden !important;
         border: none !important;
         height: 1.0in !important;
+        width: 2.625in !important;
       }
     }
   </style>
@@ -262,8 +265,7 @@
       </div>
     </div>
 
-    <div id="badgeContainer" class="badge-grid"></div>
-  </div>
+<div id="badgeContainer"></div>  </div>
 
   <!-- STAFF & PAYROLL TAB -->
   <div id="staff" class="tab-content">
@@ -596,12 +598,16 @@
   function renderBadges(list) {
     const container = document.getElementById('badgeContainer');
 
-    let spacersHtml = '';
+    // Build the array of elements (spacers + badges)
+    const items = [];
+
+    // 1. Add spacer slots if starting past slot 1
     for (let i = 1; i < currentStartSlot; i++) {
-      spacersHtml += `<div class="badge-card badge-spacer"></div>`;
+      items.push(`<div class="badge-card badge-spacer"></div>`);
     }
 
-    const badgesHtml = list.map(s => {
+    // 2. Add student badges
+    list.forEach(s => {
       const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
       const safeFirst = (s.firstName || '').replace(/'/g, "\\'");
@@ -609,7 +615,7 @@
       const safeSub = (s.subject || 'Math').replace(/'/g, "\\'");
       const safePhone = (s.parentPhone || '').replace(/'/g, "\\'");
 
-      return `
+      items.push(`
         <div class="badge-card">
           <div class="no-print" style="position: absolute; top: 6px; right: 6px; display: flex; gap: 4px;">
             <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${s.id}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
@@ -623,10 +629,17 @@
           </div>
           <img class="badge-qr" src="${s.qrCode}" alt="QR" />
         </div>
-      `;
-    }).join('');
+      `);
+    });
 
-    container.innerHTML = spacersHtml + badgesHtml;
+    // 3. Chunk into 30 items per sheet-page
+    const pages = [];
+    for (let i = 0; i < items.length; i += 30) {
+      const chunk = items.slice(i, i + 30);
+      pages.push(`<div class="sheet-page">${chunk.join('')}</div>`);
+    }
+
+    container.innerHTML = pages.join('');
   }
 
   function filterBadges() {
