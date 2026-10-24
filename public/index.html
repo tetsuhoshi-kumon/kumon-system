@@ -32,30 +32,41 @@
     .btn-danger { background: var(--danger); color: white; border: none; cursor: pointer; }
     .btn-success { background: var(--secondary); color: white; border: none; cursor: pointer; }
 
-    /* Badges & Sheet Grid */
-    .badge-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 12px;
-      margin-top: 1rem;
-    }
-    .badge-card {
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      padding: 10px;
-      position: relative;
+    /* Screen Preview Styling for Physical Avery Sheets */
+    .sheet-page {
       background: white;
+      width: 8.5in;
+      min-height: 11in;
+      padding: 0.5in 0.1875in;
+      margin: 1.5rem auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+      box-sizing: border-box;
+    }
+    .sheet-page .badge-card {
+      float: left;
+      width: 2.625in;
+      height: 1.0in;
+      margin-right: 0.125in;
+      border: 1px dashed #ccc;
+      box-sizing: border-box;
+      padding: 0.08in 0.12in;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      position: relative;
     }
-    .badge-spacer {
-      visibility: hidden;
-      border: none;
-      height: 1in;
+    .sheet-page .badge-card:nth-of-type(3n) {
+      margin-right: 0;
     }
-    .badge-info { font-size: 0.9rem; line-height: 1.3; }
-    .badge-qr { width: 75px; height: 75px; }
+    .sheet-page::after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+    .badge-info { font-size: 10px; line-height: 1.25; overflow: hidden; max-width: 1.6in; }
+    .badge-info strong { font-size: 11px; display: block; margin-bottom: 2px; white-space: nowrap; text-overflow: ellipsis; }
+    .badge-qr { width: 0.82in; height: 0.82in; flex-shrink: 0; margin-left: 2px; }
 
     .chip-btn {
       color: white;
@@ -66,23 +77,21 @@
       cursor: pointer;
     }
 
-    /* Print Formatting for Avery 8160 (3 cols x 10 rows) */
-    /* Print Formatting for Avery 5160 / 8160 */
-    /* Print Formatting for Avery 5160 / 8160 */
+    /* Print Formatting for Avery 5160 / 8160 - Absolute Multi-Page Lock */
     @media print {
       @page {
-        size: letter portrait;
-        margin: 0; /* Let .sheet-page control margins precisely */
-      }
-
-      *, *:before, *:after {
-        box-sizing: border-box !important;
+        size: 8.5in 11in;
+        margin: 0;
       }
 
       html, body {
+        width: 8.5in !important;
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: white !important;
+        background: transparent !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
 
       header, nav, .no-print, input, button, select, h2, h3, h4, p {
@@ -98,56 +107,50 @@
         background: transparent !important;
       }
 
-      /* Each sheet is strictly 8.5" x 11" Letter */
       .sheet-page {
         width: 8.5in !important;
         height: 11in !important;
         max-height: 11in !important;
-        page-break-after: always !important;
-        break-after: page !important;
+        box-sizing: border-box !important;
         padding-top: 0.5in !important;
         padding-bottom: 0.5in !important;
         padding-left: 0.1875in !important;
         padding-right: 0.1875in !important;
-        box-sizing: border-box !important;
-        display: grid !important;
-        grid-template-columns: 2.625in 2.625in 2.625in !important;
-        grid-template-rows: repeat(10, 1.0in) !important;
-        column-gap: 0.125in !important;
-        row-gap: 0 !important;
+        page-break-before: always !important;
+        break-before: page !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
         overflow: hidden !important;
+        display: block !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+
+      .sheet-page:first-of-type {
+        page-break-before: auto !important;
+        break-before: auto !important;
       }
 
       .badge-card {
+        float: left !important;
         width: 2.625in !important;
         height: 1.0in !important;
-        border: none !important;
+        max-height: 1.0in !important;
         margin: 0 !important;
+        margin-right: 0.125in !important;
         padding: 0.08in 0.12in !important;
+        border: none !important;
+        box-sizing: border-box !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        box-sizing: border-box !important;
         overflow: hidden !important;
       }
 
-      .badge-info {
-        font-size: 10px !important;
-        line-height: 1.2 !important;
-        overflow: hidden;
-      }
-
-      .badge-info strong {
-        font-size: 11px !important;
-        display: block;
-        margin-bottom: 2px;
-      }
-
-      .badge-qr {
-        width: 0.82in !important;
-        height: 0.82in !important;
-        flex-shrink: 0 !important;
-        margin-left: 4px !important;
+      .badge-card:nth-of-type(3n) {
+        margin-right: 0 !important;
       }
 
       .badge-spacer {
@@ -265,7 +268,9 @@
       </div>
     </div>
 
-<div id="badgeContainer"></div>  </div>
+    <!-- Badge Containers are rendered here inside distinct .sheet-page physical pages -->
+    <div id="badgeContainer"></div>
+  </div>
 
   <!-- STAFF & PAYROLL TAB -->
   <div id="staff" class="tab-content">
@@ -303,7 +308,7 @@
 
     <div class="view-card">
       <h3 class="no-print">Staff ID Badges</h3>
-      <div id="staffBadgeContainer" class="badge-grid"></div>
+      <div id="staffBadgeContainer"></div>
     </div>
 
     <div class="view-card no-print">
@@ -597,16 +602,14 @@
 
   function renderBadges(list) {
     const container = document.getElementById('badgeContainer');
-
-    // Build the array of elements (spacers + badges)
     const items = [];
 
-    // 1. Add spacer slots if starting past slot 1
+    // 1. Spacers for partially used sheets
     for (let i = 1; i < currentStartSlot; i++) {
       items.push(`<div class="badge-card badge-spacer"></div>`);
     }
 
-    // 2. Add student badges
+    // 2. Individual student badges
     list.forEach(s => {
       const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
@@ -617,22 +620,22 @@
 
       items.push(`
         <div class="badge-card">
-          <div class="no-print" style="position: absolute; top: 6px; right: 6px; display: flex; gap: 4px;">
+          <div class="no-print" style="position: absolute; top: 4px; right: 4px; display: flex; gap: 3px;">
             <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${s.id}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
             <button class="chip-btn" style="background: #2980b9;" onclick="editStudent('${s.id}', '${safeFirst}', '${safeLast}', '${safeSub}', '${safePhone}')" title="Edit student">✎</button>
             <button class="chip-btn" style="background: #e74c3c;" onclick="deleteStudent('${s.id}', '${safeFull}')" title="Delete student">✕</button>
           </div>
           <div class="badge-info">
-            <strong>${s.firstName} ${s.lastName}</strong><br>
-            <span>ID: ${s.id}</span><br>
-            <span style="color: #666;">${s.subject || 'Math'}</span>
+            <strong>${s.firstName} ${s.lastName}</strong>
+            <div>ID: ${s.id}</div>
+            <div style="color: #666;">${s.subject || 'Math'}</div>
           </div>
           <img class="badge-qr" src="${s.qrCode}" alt="QR" />
         </div>
       `);
     });
 
-    // 3. Chunk into 30 items per sheet-page
+    // 3. Partition into exact batches of 30 items per sheet
     const pages = [];
     for (let i = 0; i < items.length; i += 30) {
       const chunk = items.slice(i, i + 30);
@@ -720,26 +723,35 @@
       </tr>
     `).join('');
 
-    const badgeContainer = document.getElementById('staffBadgeContainer');
-    badgeContainer.innerHTML = employees.map(e => {
+    // Partition staff into 30-badge pages as well
+    const staffBadges = employees.map(e => {
       const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
       const roleText = e.role || 'Staff';
 
       return `
         <div class="badge-card">
-          <div class="no-print" style="position: absolute; top: 6px; right: 6px;">
+          <div class="no-print" style="position: absolute; top: 4px; right: 4px;">
             <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${e.id}', '${roleText}', '${e.qrCode}')" title="Print single staff badge">🖨️</button>
           </div>
           <div class="badge-info">
-            <strong>${e.firstName} ${e.lastName}</strong><br>
-            <span>ID: ${e.id}</span><br>
-            <span style="color: #27ae60; font-weight: bold;">${roleText}</span>
+            <strong>${e.firstName} ${e.lastName}</strong>
+            <div>ID: ${e.id}</div>
+            <div style="color: #27ae60; font-weight: bold;">${roleText}</div>
           </div>
           <img class="badge-qr" src="${e.qrCode}" alt="Staff QR" />
         </div>
       `;
-    }).join('');
+    });
+
+    const staffPages = [];
+    for (let i = 0; i < staffBadges.length; i += 30) {
+      const chunk = staffBadges.slice(i, i + 30);
+      staffPages.push(`<div class="sheet-page">${chunk.join('')}</div>`);
+    }
+
+    const badgeContainer = document.getElementById('staffBadgeContainer');
+    badgeContainer.innerHTML = staffPages.join('');
 
     const payRes = await fetch('/api/payroll-summary');
     const payroll = await payRes.json();

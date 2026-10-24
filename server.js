@@ -574,7 +574,7 @@ app.get('/api/export/student-logs', async (req, res) => {
 
   try {
     const query = {};
-    if (startDate && endDate) query.date = { $gte: startDate,$lte: endDate };
+    if (startDate && endDate) query.date = { $gte: startDate, $lte: endDate };
     else if (startDate) query.date = { $gte: startDate };
     else if (endDate) query.date = { $lte: endDate };
 
@@ -608,7 +608,7 @@ app.get('/api/export/staff-logs', async (req, res) => {
 
   try {
     const query = {};
-    if (startDate && endDate) query.date = { $gte: startDate,$lte: endDate };
+    if (startDate && endDate) query.date = { $gte: startDate, $lte: endDate };
     else if (startDate) query.date = { $gte: startDate };
     else if (endDate) query.date = { $lte: endDate };
 
