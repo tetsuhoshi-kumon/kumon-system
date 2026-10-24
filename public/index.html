@@ -10,7 +10,6 @@
       --secondary: #27ae60;
       --danger: #e74c3c;
       --dark: #2c3e50;
-      --light: #f8f9fa;
     }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #eef2f5; color: #333; }
@@ -23,22 +22,19 @@
     .view-card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    
-    /* Tables */
+
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #ddd; }
     th { background: #f1f4f6; }
 
-    /* Form Controls */
     input, select, button { padding: 0.6rem; border-radius: 4px; border: 1px solid #ccc; font-size: 1rem; }
     .btn-action { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
     .btn-danger { background: var(--danger); color: white; border: none; cursor: pointer; }
     .btn-success { background: var(--secondary); color: white; border: none; cursor: pointer; }
 
-    /* Avery 8160 Print Grid: 3 columns x 10 rows (1" x 2-5/8") */
     .badge-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 12px;
       margin-top: 1rem;
     }
@@ -54,20 +50,17 @@
     }
     .badge-info { font-size: 0.9rem; line-height: 1.3; }
     .badge-qr { width: 75px; height: 75px; }
-    .delete-chip {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: #e74c3c;
+    
+    .chip-btn {
       color: white;
       border: none;
       border-radius: 3px;
-      padding: 2px 6px;
+      padding: 3px 6px;
       font-size: 11px;
       cursor: pointer;
     }
 
-    /* Print Formatting for Avery 8160 Labels */
+    /* Print Formatting for Avery 8160 Labels (3 cols x 10 rows) */
     @media print {
       body { background: white; margin: 0; }
       header, nav, .no-print, input, button { display: none !important; }
@@ -118,7 +111,15 @@
     </div>
 
     <div class="view-card">
-      <h3>Students Currently In Center</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <h3>Students Currently In Center</h3>
+        <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="date" id="studentExportStart" />
+          <span>to</span>
+          <input type="date" id="studentExportEnd" />
+          <button class="btn-action" style="font-size: 13px;" onclick="downloadStudentCSV()">⬇ Export Attendance CSV</button>
+        </div>
+      </div>
       <table id="activeStudentsTable">
         <thead>
           <tr>
@@ -175,38 +176,56 @@
             <option value="Reading">Reading</option>
             <option value="Math & Reading">Math & Reading</option>
           </select>
+          <input type="text" id="newStdPhone" placeholder="Parent Phone (optional)" />
           <button class="btn-success" onclick="addStudent()">Add Student</button>
         </div>
       </div>
     </div>
 
-    <!-- Badge Grid -->
     <div id="badgeContainer" class="badge-grid"></div>
   </div>
 
   <!-- STAFF & PAYROLL TAB -->
   <div id="staff" class="tab-content">
     <div class="view-card no-print">
-      <h2>Staff Members</h2>
-      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+        <h2>Staff Management</h2>
+        <button class="btn-action" onclick="window.print()">Print Full Sheet (Avery 8160)</button>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
         <input type="text" id="newEmpId" placeholder="Employee ID" />
         <input type="text" id="newEmpFirst" placeholder="First Name" />
         <input type="text" id="newEmpLast" placeholder="Last Name" />
         <input type="text" id="newEmpRole" placeholder="Role (e.g., Assistant)" />
         <button class="btn-success" onclick="addEmployee()">Add Staff</button>
       </div>
+
       <table id="staffRosterTable">
         <thead>
-          <tr><th>ID</th><th>Name</th><th>Role</th><th>Action</th></tr>
+          <tr><th>ID</th><th>Name</th><th>Role</th><th>Actions</th></tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
 
+    <!-- Printable Staff Badges -->
+    <div class="view-card">
+      <h3 class="no-print">Staff ID Badges</h3>
+      <div id="staffBadgeContainer" class="badge-grid"></div>
+    </div>
+
+    <!-- Payroll Summary -->
     <div class="view-card no-print">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>Payroll Summary (Current Cycle)</h2>
-        <button class="btn-danger" onclick="resetPayroll()">Reset Payroll Cycle</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <h2>Payroll Summary</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <input type="date" id="staffExportStart" />
+          <span>to</span>
+          <input type="date" id="staffExportEnd" />
+          <button class="btn-action" style="font-size: 13px;" onclick="downloadStaffCSV()">⬇ Export Payroll CSV</button>
+          <button class="btn-danger" style="font-size: 13px;" onclick="resetPayroll()">Reset Cycle</button>
+        </div>
       </div>
       <table id="payrollTable">
         <thead>
@@ -221,7 +240,7 @@
   <div id="import" class="tab-content">
     <div class="view-card no-print">
       <h2>Upload Student CSV Roster</h2>
-      <p>Ensure your CSV headers include <code>id</code>, <code>firstName</code>, <code>lastName</code>, and <code>subject</code>.</p>
+      <p>Ensure CSV headers include: <code>id</code>, <code>firstName</code>, <code>lastName</code>, and <code>subject</code>.</p>
       <input type="file" id="csvFileInput" accept=".csv" />
       <button class="btn-action" onclick="uploadCSV()">Upload to MongoDB Atlas</button>
       <div id="uploadStatus" style="margin-top: 1rem; font-weight: bold;"></div>
@@ -245,7 +264,52 @@
     if (tabId === 'staff') loadStaff();
   }
 
-  // --- Scan Action ---
+  // --- Print Single Badge Helper (Avery 1" x 2-5/8" Layout) ---
+  function printSingleBadge(fullName, id, labelSubtitle, qrDataUrl) {
+    const printWindow = window.open('', '_blank', 'width=450,height=300');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Badge - ${fullName}</title>
+          <style>
+            @page { size: 2.625in 1in; margin: 0; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 0.08in 0.12in;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              width: 2.625in;
+              height: 1in;
+            }
+            .info { line-height: 1.25; font-size: 11px; color: #222; }
+            .info strong { font-size: 13px; display: block; margin-bottom: 2px; }
+            .qr { width: 0.85in; height: 0.85in; flex-shrink: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="info">
+            <strong>${fullName}</strong>
+            <div>ID: ${id}</div>
+            <div style="color: #555;">${labelSubtitle}</div>
+          </div>
+          <img class="qr" src="${qrDataUrl}" alt="QR" />
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() { window.close(); };
+            };
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  // --- Kiosk Scan Action ---
   async function handleScan() {
     const scanId = document.getElementById('scanInput').value.trim();
     if (!scanId) return;
@@ -285,7 +349,7 @@
         <td>${s.checkInFormatted}</td>
         <td>${s.minutesInCenter} mins</td>
         <td class="no-print">
-          <button class="btn-action" onclick="markReady('${s.studentId}')">Mark Ready</button>
+          <button class="btn-action" style="font-size: 12px; padding: 4px 8px;" onclick="markReady('${s.studentId}')">Mark Ready</button>
         </td>
       </tr>
     `).join('');
@@ -319,7 +383,7 @@
     `).join('');
   }
 
-  // --- Badges & Avery Labels ---
+  // --- Student Badges & Avery Labels ---
   async function loadBadges() {
     const res = await fetch('/api/students-qr');
     allStudents = await res.json();
@@ -328,17 +392,30 @@
 
   function renderBadges(list) {
     const container = document.getElementById('badgeContainer');
-    container.innerHTML = list.map(s => `
-      <div class="badge-card">
-        <button class="no-print delete-chip" onclick="deleteStudent('${s.id}', '${s.firstName} ${s.lastName}')">✕</button>
-        <div class="badge-info">
-          <strong>${s.firstName} ${s.lastName}</strong><br>
-          <span>ID: ${s.id}</span><br>
-          <span style="color: #666;">${s.subject || 'Math'}</span>
+    container.innerHTML = list.map(s => {
+      const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+      const safeFull = fullName.replace(/'/g, "\\'");
+      const safeFirst = (s.firstName || '').replace(/'/g, "\\'");
+      const safeLast = (s.lastName || '').replace(/'/g, "\\'");
+      const safeSub = (s.subject || 'Math').replace(/'/g, "\\'");
+      const safePhone = (s.parentPhone || '').replace(/'/g, "\\'");
+
+      return `
+        <div class="badge-card">
+          <div class="no-print" style="position: absolute; top: 6px; right: 6px; display: flex; gap: 4px;">
+            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${s.id}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
+            <button class="chip-btn" style="background: #2980b9;" onclick="editStudent('${s.id}', '${safeFirst}', '${safeLast}', '${safeSub}', '${safePhone}')" title="Edit student">✎</button>
+            <button class="chip-btn" style="background: #e74c3c;" onclick="deleteStudent('${s.id}', '${safeFull}')" title="Delete student">✕</button>
+          </div>
+          <div class="badge-info">
+            <strong>${s.firstName} ${s.lastName}</strong><br>
+            <span>ID: ${s.id}</span><br>
+            <span style="color: #666;">${s.subject || 'Math'}</span>
+          </div>
+          <img class="badge-qr" src="${s.qrCode}" alt="QR" />
         </div>
-        <img class="badge-qr" src="${s.qrCode}" alt="QR" />
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function filterBadges() {
@@ -356,40 +433,87 @@
     const firstName = document.getElementById('newStdFirst').value.trim();
     const lastName = document.getElementById('newStdLast').value.trim();
     const subject = document.getElementById('newStdSub').value;
+    const parentPhone = document.getElementById('newStdPhone').value.trim();
 
     if (!id || !firstName) return alert('ID and First Name are required.');
 
     await fetch('/api/students', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, firstName, lastName, subject })
+      body: JSON.stringify({ id, firstName, lastName, subject, parentPhone })
     });
 
     document.getElementById('newStdId').value = '';
     document.getElementById('newStdFirst').value = '';
     document.getElementById('newStdLast').value = '';
+    document.getElementById('newStdPhone').value = '';
+    loadBadges();
+  }
+
+  async function editStudent(id, currentFirst, currentLast, currentSub, currentPhone) {
+    const newFirst = prompt('Update First Name:', currentFirst);
+    if (newFirst === null) return;
+    const newLast = prompt('Update Last Name:', currentLast);
+    if (newLast === null) return;
+    const newSub = prompt('Update Subject (Math, Reading, Math & Reading):', currentSub);
+    if (newSub === null) return;
+    const newPhone = prompt('Update Parent Phone:', currentPhone);
+    if (newPhone === null) return;
+
+    if (!newFirst.trim()) return alert('First name is required.');
+
+    await fetch(`/api/students/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName: newFirst.trim(), lastName: newLast.trim(), subject: newSub.trim() || 'Math', parentPhone: newPhone.trim() })
+    });
     loadBadges();
   }
 
   async function deleteStudent(id, name) {
-    if (!confirm(`Delete ${name} (ID: ${id}) permanently?`)) return;
+    if (!confirm(`Permanently remove ${name} (ID: ${id})?`)) return;
     await fetch(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
     loadBadges();
   }
 
-  // --- Staff & Payroll ---
+  // --- Staff Management & Payroll ---
   async function loadStaff() {
     const res = await fetch('/api/employees-qr');
     const employees = await res.json();
+
     const tbody = document.querySelector('#staffRosterTable tbody');
     tbody.innerHTML = employees.map(e => `
       <tr>
         <td>${e.id}</td>
         <td>${e.firstName} ${e.lastName}</td>
         <td>${e.role}</td>
-        <td><button class="btn-danger" onclick="deleteStaff('${e.id}', '${e.firstName} ${e.lastName}')">Delete</button></td>
+        <td style="display: flex; gap: 0.4rem;">
+          <button class="btn-action" style="padding: 3px 8px; font-size: 12px;" onclick="editEmployee('${e.id}', '${(e.firstName || '').replace(/'/g, "\\'")}', '${(e.lastName || '').replace(/'/g, "\\'")}', '${(e.role || '').replace(/'/g, "\\'")}')">Edit</button>
+          <button class="btn-danger" style="padding: 3px 8px; font-size: 12px;" onclick="deleteStaff('${e.id}', '${(e.firstName || '').replace(/'/g, "\\'")} ${(e.lastName || '').replace(/'/g, "\\'")}')">Delete</button>
+        </td>
       </tr>
     `).join('');
+
+    const badgeContainer = document.getElementById('staffBadgeContainer');
+    badgeContainer.innerHTML = employees.map(e => {
+      const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
+      const safeFull = fullName.replace(/'/g, "\\'");
+      const roleText = e.role || 'Staff';
+
+      return `
+        <div class="badge-card">
+          <div class="no-print" style="position: absolute; top: 6px; right: 6px;">
+            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${e.id}', '${roleText}', '${e.qrCode}')" title="Print single staff badge">🖨️</button>
+          </div>
+          <div class="badge-info">
+            <strong>${e.firstName} ${e.lastName}</strong><br>
+            <span>ID: ${e.id}</span><br>
+            <span style="color: #27ae60; font-weight: bold;">${roleText}</span>
+          </div>
+          <img class="badge-qr" src="${e.qrCode}" alt="Staff QR" />
+        </div>
+      `;
+    }).join('');
 
     const payRes = await fetch('/api/payroll-summary');
     const payroll = await payRes.json();
@@ -425,6 +549,24 @@
     loadStaff();
   }
 
+  async function editEmployee(id, currentFirst, currentLast, currentRole) {
+    const newFirst = prompt('Update First Name:', currentFirst);
+    if (newFirst === null) return;
+    const newLast = prompt('Update Last Name:', currentLast);
+    if (newLast === null) return;
+    const newRole = prompt('Update Role:', currentRole);
+    if (newRole === null) return;
+
+    if (!newFirst.trim()) return alert('First name is required.');
+
+    await fetch(`/api/employees/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName: newFirst.trim(), lastName: newLast.trim(), role: newRole.trim() || 'Assistant' })
+    });
+    loadStaff();
+  }
+
   async function deleteStaff(id, name) {
     if (!confirm(`Remove staff member ${name}?`)) return;
     await fetch(`/api/employees/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -432,9 +574,34 @@
   }
 
   async function resetPayroll() {
-    if (!confirm("Are you sure you want to reset all shift logs for the current pay cycle?")) return;
+    if (!confirm("Reset all shift logs for the current pay cycle?")) return;
     await fetch('/api/reset-payroll', { method: 'POST' });
     loadStaff();
+  }
+
+  // --- Filtered CSV Downloads ---
+  function downloadStudentCSV() {
+    const start = document.getElementById('studentExportStart').value;
+    const end = document.getElementById('studentExportEnd').value;
+    let url = '/api/export/student-logs';
+    const params = new URLSearchParams();
+    if (start) params.append('startDate', start);
+    if (end) params.append('endDate', end);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+    window.location.href = url;
+  }
+
+  function downloadStaffCSV() {
+    const start = document.getElementById('staffExportStart').value;
+    const end = document.getElementById('staffExportEnd').value;
+    let url = '/api/export/staff-logs';
+    const params = new URLSearchParams();
+    if (start) params.append('startDate', start);
+    if (end) params.append('endDate', end);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+    window.location.href = url;
   }
 
   // --- CSV Bulk Upload ---
@@ -454,7 +621,6 @@
     fileInput.value = '';
   }
 
-  // Auto-refresh active table every 30 seconds
   setInterval(() => {
     if (document.getElementById('kiosk').classList.contains('active')) refreshActive();
     if (document.getElementById('lobby').classList.contains('active')) refreshLobby();
