@@ -202,7 +202,7 @@ app.post('/api/scan', async (req, res) => {
   }
 });
 
-// --- 2. Direct Manual Check-Out Endpoints ---
+// --- 2. Manual Direct Check-Out Endpoints ---
 app.post('/api/checkout', async (req, res) => {
   const { studentId } = req.body;
   const cleanId = String(studentId || '').trim();
@@ -320,31 +320,41 @@ app.get('/api/lobby-board', (req, res) => {
   res.json({ studying, readyForPickup: readyForPickupList });
 });
 
-// --- 4. Student Management (Add, QR, Edit, Delete) ---
+// --- 4. Student Management (Add, QR, Edit, Delete, Auto-Temp ID) ---
 app.post('/api/students', async (req, res) => {
-  const { subject, id, lastName, firstName, parentPhone } = req.body;
+  let { subject, id, lastName, firstName, parentPhone } = req.body;
+
+  if (!id || String(id).trim() === '') {
+    id = `TEMP-${Math.floor(100000 + Math.random() * 900000)}`;
+  } else {
+    id = String(id).trim();
+  }
+
   await Student.findOneAndUpdate(
-    { id: String(id).trim() },
+    { id },
     {
       subject: subject || "Math",
-      id: String(id).trim(),
+      id,
       lastName: String(lastName || '').trim(),
       firstName: String(firstName || '').trim(),
       parentPhone: parentPhone || ""
     },
     { upsert: true, new: true }
   );
-  res.json({ success: true, message: `Saved ${firstName} ${lastName} successfully!` });
+  res.json({ success: true, message: `Saved ${firstName} ${lastName} with ID ${id}!`, id });
 });
 
 app.put('/api/students/:id', async (req, res) => {
   const studentId = String(req.params.id || '').trim();
-  const { firstName, lastName, subject, parentPhone } = req.body;
+  const { firstName, lastName, subject, parentPhone, newId } = req.body;
 
   try {
+    const targetId = newId && String(newId).trim() !== '' ? String(newId).trim() : studentId;
+
     const updatedStudent = await Student.findOneAndUpdate(
       { id: studentId },
       {
+        id: targetId,
         firstName: String(firstName || '').trim(),
         lastName: String(lastName || '').trim(),
         subject: subject || 'Math',
@@ -359,14 +369,18 @@ app.put('/api/students/:id', async (req, res) => {
 
     if (activeStudentSessions.has(studentId)) {
       const session = activeStudentSessions.get(studentId);
+      activeStudentSessions.delete(studentId);
+      session.studentId = targetId;
       session.firstName = updatedStudent.firstName;
       session.lastName = updatedStudent.lastName;
       session.subject = updatedStudent.subject;
       session.parentPhone = updatedStudent.parentPhone;
+      activeStudentSessions.set(targetId, session);
     }
 
     const pickupItem = readyForPickupList.find(p => p.studentId === studentId);
     if (pickupItem) {
+      pickupItem.studentId = targetId;
       pickupItem.firstName = updatedStudent.firstName;
       pickupItem.lastName = updatedStudent.lastName;
     }
