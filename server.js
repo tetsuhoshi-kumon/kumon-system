@@ -320,28 +320,34 @@ app.get('/api/lobby-board', (req, res) => {
   res.json({ studying, readyForPickup: readyForPickupList });
 });
 
-// --- 4. Student Management (Add, QR, Edit, Delete, Auto-Temp ID) ---
+// --- 4. Student Management (Add, QR, Edit, Delete, Temp IDs) ---
 app.post('/api/students', async (req, res) => {
   let { subject, id, lastName, firstName, parentPhone } = req.body;
 
+  // Auto-generate temp ID if left empty
   if (!id || String(id).trim() === '') {
     id = `TEMP-${Math.floor(100000 + Math.random() * 900000)}`;
   } else {
     id = String(id).trim();
   }
 
-  await Student.findOneAndUpdate(
-    { id },
-    {
-      subject: subject || "Math",
-      id,
-      lastName: String(lastName || '').trim(),
-      firstName: String(firstName || '').trim(),
-      parentPhone: parentPhone || ""
-    },
-    { upsert: true, new: true }
-  );
-  res.json({ success: true, message: `Saved ${firstName} ${lastName} with ID ${id}!`, id });
+  try {
+    const student = await Student.findOneAndUpdate(
+      { id },
+      {
+        subject: subject || "Math",
+        id,
+        lastName: String(lastName || '').trim(),
+        firstName: String(firstName || '').trim(),
+        parentPhone: parentPhone || ""
+      },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, message: `Saved ${firstName} ${lastName} with ID ${id}!`, student });
+  } catch (err) {
+    console.error('Save Student Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save student.' });
+  }
 });
 
 app.put('/api/students/:id', async (req, res) => {

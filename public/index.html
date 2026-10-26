@@ -32,6 +32,7 @@
     .btn-action { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
     .btn-danger { background: var(--danger); color: white; border: none; cursor: pointer; }
     .btn-success { background: var(--secondary); color: white; border: none; cursor: pointer; }
+    .btn-warning { background: var(--warning); color: white; border: none; cursor: pointer; }
 
     /* Time Status Badges */
     .time-badge {
@@ -87,6 +88,20 @@
 
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
 
+    /* Control Toolbar Box */
+    .toolbar-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
     /* Print Formatting for Avery 5160 / 8160 - Strict Multi-Page Lock */
     @media print {
       @page {
@@ -104,7 +119,7 @@
         print-color-adjust: exact;
       }
 
-      header, nav, .no-print, input, button, select, h2, h3, h4, p {
+      header, nav, .no-print, input, button, select, h2, h3, h4, p, .toolbar-box {
         display: none !important;
       }
 
@@ -238,22 +253,14 @@
     </div>
   </div>
 
-  <!-- BADGES & PRINTING TAB -->
+  <!-- STUDENT BADGES & PRINTING TAB -->
   <div id="badges" class="tab-content">
     <div class="view-card no-print">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <div>
           <h2>Student Badges</h2>
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem;">
-            <label for="startSlotSelect" style="font-size: 0.9rem; font-weight: bold;">Start on Sticker #:</label>
-            <select id="startSlotSelect" style="width: 140px;" onchange="applyStickerOffset()"></select>
-
-            <button class="btn-action" onclick="printAllBadges()">Print All Badges</button>
-            <button class="btn-success" onclick="printSelectedBadges()">Print Selected (<span id="selectedCount">0</span>)</button>
-            <button class="btn-danger" style="font-size: 13px; padding: 0.6rem 0.8rem;" onclick="resetStickerOffset()">Reset Slot 1</button>
-          </div>
-          <p style="font-size: 0.8rem; color: #666; margin: 4px 0 0 0;">
-            Select slot offset to avoid wasting partially used Avery sheets (1–30, left-to-right, top-to-bottom).
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+            Select individual students via checkboxes below to print replacement/new badges without reprinting the whole sheet.
           </p>
         </div>
         <div>
@@ -261,11 +268,33 @@
         </div>
       </div>
 
-      <!-- Add Student Form (With Auto-Generated Temp ID support) -->
-      <div style="margin-top: 1rem; background: #fafafa; padding: 1rem; border-radius: 6px;">
-        <h4>Add Individual Student</h4>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <input type="text" id="newStdId" placeholder="ID (Leave blank for TEMP-ID)" style="width: 220px;" />
+      <!-- Batch Print & Sheet Offset Toolbar -->
+      <div class="toolbar-box">
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <label for="startSlotSelect" style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
+          <select id="startSlotSelect" style="width: 140px;" onchange="applyStickerOffset()"></select>
+          <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetStickerOffset()">Reset Slot 1</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn-action" style="font-size: 13px;" onclick="selectAllStudents(true)">Select All</button>
+          <button class="btn-danger" style="font-size: 13px;" onclick="selectAllStudents(false)">Clear Selection</button>
+          <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedBadges()">
+            🖨️ Print Selected (<span id="selectedCount">0</span>)
+          </button>
+          <button class="btn-action" style="font-size: 13px;" onclick="printAllBadges()">Print All Sheet</button>
+        </div>
+      </div>
+
+      <!-- Add Student Form (With Visible Temp ID Generator) -->
+      <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
+        <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <div style="display: flex; gap: 0.25rem; align-items: center;">
+            <input type="text" id="newStdId" placeholder="Official Kumon ID" style="width: 170px;" />
+            <button type="button" class="btn-warning" onclick="generateStudentTempId()" title="Generate a temporary student ID" style="padding: 0.6rem 0.75rem; font-size: 12px; font-weight: bold;">
+              ⚡ Auto-Gen Temp ID
+            </button>
+          </div>
           <input type="text" id="newStdFirst" placeholder="First Name" />
           <input type="text" id="newStdLast" placeholder="Last Name" />
           <select id="newStdSub">
@@ -279,7 +308,7 @@
       </div>
     </div>
 
-    <!-- Badge Containers are rendered here inside distinct .sheet-page physical pages -->
+    <!-- Student Badge Containers rendered into discrete .sheet-page physical pages -->
     <div id="badgeContainer"></div>
   </div>
 
@@ -313,22 +342,28 @@
       </table>
     </div>
 
-    <!-- Staff ID Badges Printable View with Selection and Slot Offsets -->
+    <!-- Staff ID Badges Printable View with Batch Controls -->
     <div class="view-card">
-      <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-        <div>
-          <h3>Staff ID Badges</h3>
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem;">
-            <label for="startSlotSelectStaff" style="font-size: 0.9rem; font-weight: bold;">Start on Sticker #:</label>
-            <select id="startSlotSelectStaff" style="width: 140px;" onchange="applyStaffStickerOffset()"></select>
+      <div class="no-print" style="margin-bottom: 1rem;">
+        <h3>Staff ID Badges</h3>
+        <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+          Select staff members via checkboxes to batch print badges onto Avery 8160 sheets.
+        </p>
 
-            <button class="btn-action" onclick="printAllStaffBadges()">Print All Staff</button>
-            <button class="btn-success" onclick="printSelectedStaffBadges()">Print Selected (<span id="selectedStaffCount">0</span>)</button>
-            <button class="btn-danger" style="font-size: 13px; padding: 0.6rem 0.8rem;" onclick="resetStaffStickerOffset()">Reset Slot 1</button>
+        <div class="toolbar-box">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <label for="startSlotSelectStaff" style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
+            <select id="startSlotSelectStaff" style="width: 140px;" onchange="applyStaffStickerOffset()"></select>
+            <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetStaffStickerOffset()">Reset Slot 1</button>
           </div>
-          <p style="font-size: 0.8rem; color: #666; margin: 4px 0 0 0;">
-            Select slot offset to avoid wasting partially used Avery sheets (1–30).
-          </p>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-action" style="font-size: 13px;" onclick="selectAllStaff(true)">Select All</button>
+            <button class="btn-danger" style="font-size: 13px;" onclick="selectAllStaff(false)">Clear Selection</button>
+            <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedStaffBadges()">
+              🖨️ Print Selected (<span id="selectedStaffCount">0</span>)
+            </button>
+            <button class="btn-action" style="font-size: 13px;" onclick="printAllStaffBadges()">Print All Sheet</button>
+          </div>
         </div>
       </div>
 
@@ -377,21 +412,16 @@
   const selectedStaffIds = new Set();
 
   // --- Global Hardware Barcode / QR Scanner Listener ---
+  // Completely isolated: If typing inside ANY input, select, or textarea, exit immediately.
   (function initGlobalScanner() {
     let scanBuffer = '';
     let lastCharTime = 0;
     const SCANNER_MAX_INTERVAL_MS = 50;
 
     window.addEventListener('keydown', (e) => {
-      const activeElem = document.activeElement;
-
-      // Ignore keystrokes when the user is typing into any input/select/textarea
-      const isTypingInField =
-        activeElem &&
-        ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeElem.tagName) &&
-        activeElem.id !== 'scanInput';
-
-      if (isTypingInField) {
+      // 1. If actively typing in ANY input, select, or textarea (except the dedicated kiosk scanInput),
+      // leave the user alone completely so focus is never lost.
+      if (e.target && e.target.matches('input, select, textarea') && e.target.id !== 'scanInput') {
         return;
       }
 
@@ -419,7 +449,7 @@
         return;
       }
 
-      if (e.key.length > 1) return;
+      if (e.key.length > 1) return; // Ignore Shift, Control, Alt, etc.
 
       if (interval > SCANNER_MAX_INTERVAL_MS) {
         scanBuffer = '';
@@ -445,11 +475,24 @@
     if (tabId === 'kiosk') {
       refreshActive();
       const scanInput = document.getElementById('scanInput');
-      if (scanInput) scanInput.focus();
+      if (scanInput && document.activeElement.tagName !== 'INPUT') {
+        scanInput.focus();
+      }
     }
     if (tabId === 'lobby') refreshLobby();
     if (tabId === 'badges') loadBadges();
     if (tabId === 'staff') loadStaff();
+  }
+
+  // --- Auto-Generate Temp Student ID Helper ---
+  function generateStudentTempId() {
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    const tempId = `TEMP-${randomNum}`;
+    const idInput = document.getElementById('newStdId');
+    if (idInput) {
+      idInput.value = tempId;
+      idInput.style.backgroundColor = '#fef3c7';
+    }
   }
 
   // --- Single Badge Print Dialog Helper ---
@@ -663,6 +706,15 @@
     if (countEl) countEl.textContent = selectedStudentIds.size;
   }
 
+  function selectAllStudents(select) {
+    if (select) {
+      allStudents.forEach(s => selectedStudentIds.add(s.id));
+    } else {
+      selectedStudentIds.clear();
+    }
+    renderBadges(allStudents);
+  }
+
   function renderBadges(list) {
     const container = document.getElementById('badgeContainer');
     const items = [];
@@ -685,7 +737,7 @@
       items.push(`
         <div class="badge-card">
           <div class="no-print" style="position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 4px;">
-            <input type="checkbox" ${isChecked} onchange="toggleSelectStudent('${s.id}')" title="Queue for batch printing" style="cursor: pointer; width: 15px; height: 15px;" />
+            <input type="checkbox" ${isChecked} onchange="toggleSelectStudent('${s.id}')" title="Queue for batch printing" style="cursor: pointer; width: 16px; height: 16px;" />
             <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${s.id}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
             <button class="chip-btn" style="background: #2980b9;" onclick="editStudent('${s.id}', '${safeFirst}', '${safeLast}', '${safeSub}', '${safePhone}')" title="Edit student">✎</button>
             <button class="chip-btn" style="background: #e74c3c;" onclick="deleteStudent('${s.id}', '${safeFull}')" title="Delete student">✕</button>
@@ -737,7 +789,8 @@
   }
 
   async function addStudent() {
-    const id = document.getElementById('newStdId').value.trim();
+    const idInput = document.getElementById('newStdId');
+    const id = idInput.value.trim();
     const firstName = document.getElementById('newStdFirst').value.trim();
     const lastName = document.getElementById('newStdLast').value.trim();
     const subject = document.getElementById('newStdSub').value;
@@ -752,13 +805,14 @@
     });
     const data = await res.json();
 
-    document.getElementById('newStdId').value = '';
+    idInput.value = '';
+    idInput.style.backgroundColor = '';
     document.getElementById('newStdFirst').value = '';
     document.getElementById('newStdLast').value = '';
     document.getElementById('newStdPhone').value = '';
 
-    if (data.id) {
-      selectedStudentIds.add(data.id);
+    if (data.student && data.student.id) {
+      selectedStudentIds.add(data.student.id);
     }
     loadBadges();
   }
@@ -842,6 +896,15 @@
     if (countEl) countEl.textContent = selectedStaffIds.size;
   }
 
+  function selectAllStaff(select) {
+    if (select) {
+      allStaff.forEach(e => selectedStaffIds.add(e.id));
+    } else {
+      selectedStaffIds.clear();
+    }
+    renderStaffBadges(allStaff);
+  }
+
   function renderStaffBadges(list) {
     const container = document.getElementById('staffBadgeContainer');
     populateStaffSlotDropdown();
@@ -863,7 +926,7 @@
       items.push(`
         <div class="badge-card">
           <div class="no-print" style="position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 4px;">
-            <input type="checkbox" ${isChecked} onchange="toggleSelectStaff('${e.id}')" title="Queue for printing" style="cursor: pointer; width: 15px; height: 15px;" />
+            <input type="checkbox" ${isChecked} onchange="toggleSelectStaff('${e.id}')" title="Queue for printing" style="cursor: pointer; width: 16px; height: 16px;" />
             <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${e.id}', '${roleText}', '${e.qrCode}')" title="Print single staff badge">🖨️</button>
           </div>
           <div class="badge-info">
@@ -1077,9 +1140,13 @@
   }
 
   setInterval(() => {
-    if (document.getElementById('kiosk').classList.contains('active')) refreshActive();
-    if (document.getElementById('lobby').classList.contains('active')) refreshLobby();
-    if (document.getElementById('staff').classList.contains('active')) refreshActiveStaff();
+    // Only refresh active table if user is NOT actively typing into a form
+    const isTyping = document.activeElement && document.activeElement.matches('input, select, textarea');
+    if (!isTyping) {
+      if (document.getElementById('kiosk').classList.contains('active')) refreshActive();
+      if (document.getElementById('lobby').classList.contains('active')) refreshLobby();
+      if (document.getElementById('staff').classList.contains('active')) refreshActiveStaff();
+    }
   }, 30000);
 
   refreshActive();
