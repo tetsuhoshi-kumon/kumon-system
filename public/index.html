@@ -88,7 +88,6 @@
 
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
 
-    /* Control Toolbar Box */
     .toolbar-box {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -102,7 +101,7 @@
       gap: 0.75rem;
     }
 
-    /* Print Formatting for Avery 5160 / 8160 - Strict Multi-Page Lock */
+    /* Print Formatting for Avery 5160 / 8160 */
     @media print {
       @page {
         size: 8.5in 11in;
@@ -260,7 +259,7 @@
         <div>
           <h2>Student Badges</h2>
           <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
-            Select individual students via checkboxes below to print replacement/new badges without reprinting the whole sheet.
+            Select individual students via checkboxes to print replacement/new badges without reprinting the whole sheet.
           </p>
         </div>
         <div>
@@ -285,13 +284,13 @@
         </div>
       </div>
 
-      <!-- Add Student Form (With Visible Temp ID Generator) -->
+      <!-- Add Student Form with Visible Temp ID Generator -->
       <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
         <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
           <div style="display: flex; gap: 0.25rem; align-items: center;">
             <input type="text" id="newStdId" placeholder="Official Kumon ID" style="width: 170px;" />
-            <button type="button" class="btn-warning" onclick="generateStudentTempId()" title="Generate a temporary student ID" style="padding: 0.6rem 0.75rem; font-size: 12px; font-weight: bold;">
+            <button type="button" class="btn-warning" onclick="generateStudentTempId()" title="Generate temporary ID" style="padding: 0.6rem 0.75rem; font-size: 12px; font-weight: bold;">
               ⚡ Auto-Gen Temp ID
             </button>
           </div>
@@ -347,7 +346,7 @@
       <div class="no-print" style="margin-bottom: 1rem;">
         <h3>Staff ID Badges</h3>
         <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
-          Select staff members via checkboxes to batch print badges onto Avery 8160 sheets.
+          Select staff members via checkboxes to batch print badges onto Avery sheets.
         </p>
 
         <div class="toolbar-box">
@@ -411,16 +410,15 @@
   const selectedStudentIds = new Set();
   const selectedStaffIds = new Set();
 
-  // --- Global Hardware Barcode / QR Scanner Listener ---
-  // Completely isolated: If typing inside ANY input, select, or textarea, exit immediately.
+  // --- Robust Hardware Barcode / QR Scanner Listener ---
   (function initGlobalScanner() {
     let scanBuffer = '';
     let lastCharTime = 0;
-    const SCANNER_MAX_INTERVAL_MS = 50;
+    // 120ms accommodates 2D QR scanner micro-delays without dropping digits
+    const SCANNER_MAX_INTERVAL_MS = 120;
 
     window.addEventListener('keydown', (e) => {
-      // 1. If actively typing in ANY input, select, or textarea (except the dedicated kiosk scanInput),
-      // leave the user alone completely so focus is never lost.
+      // If typing in an active form field (except scanInput), ignore completely
       if (e.target && e.target.matches('input, select, textarea') && e.target.id !== 'scanInput') {
         return;
       }
@@ -430,14 +428,15 @@
       lastCharTime = now;
 
       if (e.key === 'Enter') {
-        if (scanBuffer.length >= 2) {
+        const scanInput = document.getElementById('scanInput');
+        const codeToSubmit = scanBuffer.trim() || (scanInput ? scanInput.value.trim() : '');
+
+        if (codeToSubmit.length >= 2) {
           e.preventDefault();
-          const codeToSubmit = scanBuffer.trim();
           scanBuffer = '';
 
           switchTab('kiosk');
 
-          const scanInput = document.getElementById('scanInput');
           if (scanInput) {
             scanInput.value = codeToSubmit;
           }
@@ -449,7 +448,7 @@
         return;
       }
 
-      if (e.key.length > 1) return; // Ignore Shift, Control, Alt, etc.
+      if (e.key.length > 1) return;
 
       if (interval > SCANNER_MAX_INTERVAL_MS) {
         scanBuffer = '';
@@ -484,7 +483,6 @@
     if (tabId === 'staff') loadStaff();
   }
 
-  // --- Auto-Generate Temp Student ID Helper ---
   function generateStudentTempId() {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const tempId = `TEMP-${randomNum}`;
@@ -495,7 +493,6 @@
     }
   }
 
-  // --- Single Badge Print Dialog Helper ---
   function printSingleBadge(fullName, id, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
     printWindow.document.write(`
@@ -540,7 +537,6 @@
     printWindow.document.close();
   }
 
-  // --- Kiosk Scan Action ---
   async function handleScan() {
     const scanInput = document.getElementById('scanInput');
     const scanId = scanInput.value.trim();
@@ -561,7 +557,7 @@
       refreshActive();
     } else {
       alertBox.style.color = '#e74c3c';
-      alertBox.textContent = data.message || 'Scan error';
+      alertBox.textContent = (data.message || 'Scan error') + ` (Received: "${scanId}")`;
     }
   }
 
@@ -569,7 +565,6 @@
     if (e.key === 'Enter') handleScan();
   });
 
-  // --- Active Students Dashboard with Subject Timers ---
   async function refreshActive() {
     const res = await fetch('/api/active-students');
     const students = await res.json();
@@ -582,7 +577,15 @@
 
     tbody.innerHTML = students.map(s => {
       const minutes = s.minutesInCenter;
-      const isDual = (s.subject || '').includes('&') || (s.subject || '').toLowerCase().includes('math & reading');
+      const sub = (s.subject || '').toLowerCase().trim();
+      const isDual = 
+        sub.includes('&') || 
+        sub.includes('and') || 
+        sub.includes(',') || 
+        sub.includes('/') || 
+        sub.includes('both') || 
+        (sub.includes('math') && sub.includes('reading'));
+
       const targetMins = isDual ? 60 : 30;
       const warnMins = isDual ? 50 : 25;
 
@@ -645,7 +648,6 @@
     refreshActive();
   }
 
-  // --- Lobby Board ---
   async function refreshLobby() {
     const res = await fetch('/api/lobby-board');
     const data = await res.json();
@@ -664,7 +666,6 @@
     `).join('');
   }
 
-  // --- Student Badges & Avery Offset Printing ---
   function populateSlotDropdown() {
     const select = document.getElementById('startSlotSelect');
     if (!select || select.children.length > 0) return;
@@ -719,12 +720,10 @@
     const container = document.getElementById('badgeContainer');
     const items = [];
 
-    // 1. Spacers for partially used sheets
     for (let i = 1; i < currentStartSlot; i++) {
       items.push(`<div class="badge-card badge-spacer"></div>`);
     }
 
-    // 2. Individual student badges
     list.forEach(s => {
       const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
@@ -752,7 +751,6 @@
       `);
     });
 
-    // 3. Partition into exact batches of 30 items per sheet
     const pages = [];
     for (let i = 0; i < items.length; i += 30) {
       const chunk = items.slice(i, i + 30);
@@ -911,12 +909,10 @@
 
     const items = [];
 
-    // 1. Spacers for partially used sheets
     for (let i = 1; i < currentStaffStartSlot; i++) {
       items.push(`<div class="badge-card badge-spacer"></div>`);
     }
 
-    // 2. Staff cards with selection checkboxes
     list.forEach(e => {
       const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
@@ -939,7 +935,6 @@
       `);
     });
 
-    // 3. Partition into exact batches of 30 items per sheet
     const pages = [];
     for (let i = 0; i < items.length; i += 30) {
       const chunk = items.slice(i, i + 30);
@@ -965,7 +960,6 @@
     window.print();
   }
 
-  // --- Staff Management & Payroll ---
   async function loadStaff() {
     refreshActiveStaff();
 
@@ -1097,7 +1091,6 @@
     loadStaff();
   }
 
-  // --- Filtered CSV Downloads ---
   function downloadStudentCSV() {
     const start = document.getElementById('studentExportStart').value;
     const end = document.getElementById('studentExportEnd').value;
@@ -1122,7 +1115,6 @@
     window.location.href = url;
   }
 
-  // --- CSV Bulk Upload ---
   async function uploadCSV() {
     const fileInput = document.getElementById('csvFileInput');
     if (!fileInput.files[0]) return alert('Select a CSV file first.');
@@ -1140,7 +1132,6 @@
   }
 
   setInterval(() => {
-    // Only refresh active table if user is NOT actively typing into a form
     const isTyping = document.activeElement && document.activeElement.matches('input, select, textarea');
     if (!isTyping) {
       if (document.getElementById('kiosk').classList.contains('active')) refreshActive();
