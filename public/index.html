@@ -56,6 +56,37 @@
       100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
     }
 
+    /* Subject Pill Tags for Tables & Dashboards */
+    .subj-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .subj-math {
+      background-color: #ebf5fb;
+      color: #1d6fa5;
+      border: 1px solid #aed6f1;
+    }
+    .subj-reading {
+      background-color: #fdeed9;
+      color: #d93829;
+      border: 1px solid #fadbd8;
+    }
+    .subj-dual-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .subj-dual-separator {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      font-weight: bold;
+    }
+
     /* Screen Preview Styling for Physical Avery Sheets */
     .sheet-page {
       background: white;
@@ -114,8 +145,8 @@
         margin: 0 !important;
         padding: 0 !important;
         background: transparent !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
 
       header, nav, .no-print, input, button, select, h2, h3, h4, p, .toolbar-box {
@@ -210,15 +241,30 @@
     </div>
 
     <div class="view-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-        <h3>Students Currently In Center</h3>
-        <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <h3 style="margin: 0;">Students Currently In Center</h3>
+          
+          <!-- Subject Filter Dropdown with Dynamic Counts -->
+          <select id="activeSubjectFilter" class="no-print" onchange="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; font-weight: bold;">
+            <option value="ALL">All Subjects (0)</option>
+            <option value="MATH">Math Only (0)</option>
+            <option value="READING">Reading Only (0)</option>
+            <option value="DUAL">Math &amp; Reading (0)</option>
+          </select>
+
+          <!-- Instant Active Student Search Bar -->
+          <input type="text" id="activeSearchInput" class="no-print" placeholder="Search name or ID..." oninput="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; width: 170px;" />
+        </div>
+
+        <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <input type="date" id="studentExportStart" />
           <span>to</span>
           <input type="date" id="studentExportEnd" />
           <button class="btn-action" style="font-size: 13px;" onclick="downloadStudentCSV()">⬇ Export Attendance CSV</button>
         </div>
       </div>
+
       <table id="activeStudentsTable">
         <thead>
           <tr>
@@ -405,6 +451,7 @@
 <script>
   let allStudents = [];
   let allStaff = [];
+  let currentActiveStudents = [];
   let currentStartSlot = 1;
   let currentStaffStartSlot = 1;
   const selectedStudentIds = new Set();
@@ -414,11 +461,10 @@
   (function initGlobalScanner() {
     let scanBuffer = '';
     let lastCharTime = 0;
-    // 120ms accommodates 2D QR scanner micro-delays without dropping digits
     const SCANNER_MAX_INTERVAL_MS = 120;
 
     window.addEventListener('keydown', (e) => {
-      // If typing in an active form field (except scanInput), ignore completely
+      // If typing in any form input (except scanInput), ignore completely to prevent focus hijacking
       if (e.target && e.target.matches('input, select, textarea') && e.target.id !== 'scanInput') {
         return;
       }
@@ -483,6 +529,52 @@
     if (tabId === 'staff') loadStaff();
   }
 
+  // --- Format Subject as Colored Text for Printed Badges ---
+  function formatSubjectBadge(subject) {
+    const raw = (subject || 'Math').trim();
+    const lower = raw.toLowerCase();
+
+    const isDual = 
+      lower.includes('&') || 
+      lower.includes('and') || 
+      lower.includes(',') || 
+      (lower.includes('math') && lower.includes('reading'));
+
+    if (isDual) {
+      return `<span style="color: #1d6fa5 !important; font-weight: bold;">Math</span> &amp; <span style="color: #d93829 !important; font-weight: bold;">Reading</span>`;
+    } else if (lower.includes('read')) {
+      return `<span style="color: #d93829 !important; font-weight: bold;">Reading</span>`;
+    } else {
+      return `<span style="color: #1d6fa5 !important; font-weight: bold;">Math</span>`;
+    }
+  }
+
+  // --- Format Subject as Soft Pill Badges for Tables ---
+  function formatSubjectPill(subject) {
+    const raw = (subject || 'Math').trim();
+    const lower = raw.toLowerCase();
+
+    const isDual = 
+      lower.includes('&') || 
+      lower.includes('and') || 
+      lower.includes(',') || 
+      (lower.includes('math') && lower.includes('reading'));
+
+    if (isDual) {
+      return `
+        <span class="subj-dual-wrapper">
+          <span class="subj-pill subj-math">Math</span>
+          <span class="subj-dual-separator">&amp;</span>
+          <span class="subj-pill subj-reading">Reading</span>
+        </span>
+      `;
+    } else if (lower.includes('read')) {
+      return `<span class="subj-pill subj-reading">Reading</span>`;
+    } else {
+      return `<span class="subj-pill subj-math">Math</span>`;
+    }
+  }
+
   function generateStudentTempId() {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const tempId = `TEMP-${randomNum}`;
@@ -495,6 +587,8 @@
 
   function printSingleBadge(fullName, id, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
+    const coloredSub = formatSubjectBadge(labelSubtitle);
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -512,6 +606,8 @@
               justify-content: space-between;
               width: 2.625in;
               height: 1in;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             .info { line-height: 1.25; font-size: 11px; color: #222; }
             .info strong { font-size: 13px; display: block; margin-bottom: 2px; }
@@ -522,7 +618,7 @@
           <div class="info">
             <strong>${fullName}</strong>
             <div>ID: ${id}</div>
-            <div style="color: #555;">${labelSubtitle}</div>
+            <div>${coloredSub}</div>
           </div>
           <img class="qr" src="${qrDataUrl}" alt="QR" />
           <script>
@@ -565,25 +661,98 @@
     if (e.key === 'Enter') handleScan();
   });
 
+  // --- Active Students Dashboard ---
   async function refreshActive() {
     const res = await fetch('/api/active-students');
-    const students = await res.json();
-    const tbody = document.querySelector('#activeStudentsTable tbody');
+    currentActiveStudents = await res.json();
+    renderActiveStudentsTable();
+  }
 
-    if (students.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #888;">No students currently checked in.</td></tr>`;
+  function renderActiveStudentsTable() {
+    const filterSelect = document.getElementById('activeSubjectFilter');
+    const filterVal = filterSelect ? filterSelect.value : 'ALL';
+    const searchInput = document.getElementById('activeSearchInput');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const tbody = document.querySelector('#activeStudentsTable tbody');
+    if (!tbody) return;
+
+    // 1. Calculate live counts across current sessions
+    let countTotal = currentActiveStudents.length;
+    let countMath = 0;
+    let countReading = 0;
+    let countDual = 0;
+
+    currentActiveStudents.forEach(s => {
+      const sub = (s.subject || '').toLowerCase().trim();
+      const isDual = 
+        sub.includes('&') || 
+        sub.includes('and') || 
+        sub.includes(',') || 
+        (sub.includes('math') && sub.includes('reading'));
+
+      if (isDual) {
+        countDual++;
+      } else if (sub.includes('read')) {
+        countReading++;
+      } else {
+        countMath++;
+      }
+    });
+
+    // 2. Update the dropdown option labels dynamically
+    if (filterSelect) {
+      const optAll = filterSelect.querySelector('option[value="ALL"]');
+      const optMath = filterSelect.querySelector('option[value="MATH"]');
+      const optReading = filterSelect.querySelector('option[value="READING"]');
+      const optDual = filterSelect.querySelector('option[value="DUAL"]');
+
+      if (optAll) optAll.textContent = `All Subjects (${countTotal})`;
+      if (optMath) optMath.textContent = `Math Only (${countMath})`;
+      if (optReading) optReading.textContent = `Reading Only (${countReading})`;
+      if (optDual) optDual.textContent = `Math & Reading (${countDual})`;
+    }
+
+    // 3. Filter list based on both subject category and the search text
+    const filtered = currentActiveStudents.filter(s => {
+      const sub = (s.subject || '').toLowerCase().trim();
+      const isDual = 
+        sub.includes('&') || 
+        sub.includes('and') || 
+        sub.includes(',') || 
+        (sub.includes('math') && sub.includes('reading'));
+
+      let matchesSubject = true;
+      if (filterVal === 'DUAL') matchesSubject = isDual;
+      else if (filterVal === 'MATH') matchesSubject = !isDual && sub.includes('math');
+      else if (filterVal === 'READING') matchesSubject = !isDual && sub.includes('read');
+
+      if (!matchesSubject) return false;
+
+      if (!searchQuery) return true;
+      const idMatch = (s.studentId || '').toLowerCase().includes(searchQuery);
+      const firstMatch = (s.firstName || '').toLowerCase().includes(searchQuery);
+      const lastMatch = (s.lastName || '').toLowerCase().includes(searchQuery);
+      const fullMatch = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase().includes(searchQuery);
+
+      return idMatch || firstMatch || lastMatch || fullMatch;
+    });
+
+    // 4. Render empty state or student rows
+    if (filtered.length === 0) {
+      const emptyMsg = searchQuery 
+        ? `No students matching "${searchQuery}".` 
+        : (filterVal === 'ALL' ? 'No students currently checked in.' : 'No students found in this subject category.');
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #888;">${emptyMsg}</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = students.map(s => {
+    tbody.innerHTML = filtered.map(s => {
       const minutes = s.minutesInCenter;
       const sub = (s.subject || '').toLowerCase().trim();
       const isDual = 
         sub.includes('&') || 
         sub.includes('and') || 
         sub.includes(',') || 
-        sub.includes('/') || 
-        sub.includes('both') || 
         (sub.includes('math') && sub.includes('reading'));
 
       const targetMins = isDual ? 60 : 30;
@@ -603,7 +772,7 @@
       return `
         <tr>
           <td><strong>${s.firstName} ${s.lastName}</strong></td>
-          <td>${s.subject}</td>
+          <td>${formatSubjectPill(s.subject)}</td>
           <td>${s.checkInFormatted}</td>
           <td>${minutes} mins</td>
           <td><span class="time-badge ${badgeClass}">${statusText}</span></td>
@@ -648,6 +817,7 @@
     refreshActive();
   }
 
+  // --- Lobby Board ---
   async function refreshLobby() {
     const res = await fetch('/api/lobby-board');
     const data = await res.json();
@@ -662,10 +832,11 @@
 
     const studyTbody = document.querySelector('#studyingTable tbody');
     studyTbody.innerHTML = data.studying.map(s => `
-      <tr><td>${s.firstName} ${s.lastNameInitial}</td><td>${s.seatNumber}</td><td>${s.subject}</td></tr>
+      <tr><td>${s.firstName} ${s.lastNameInitial}</td><td>${s.seatNumber}</td><td>${formatSubjectPill(s.subject)}</td></tr>
     `).join('');
   }
 
+  // --- Student Badges & Avery Offset Printing ---
   function populateSlotDropdown() {
     const select = document.getElementById('startSlotSelect');
     if (!select || select.children.length > 0) return;
@@ -744,7 +915,7 @@
           <div class="badge-info">
             <strong>${s.firstName} ${s.lastName}</strong>
             <div>ID: ${s.id}</div>
-            <div style="color: #666;">${s.subject || 'Math'}</div>
+            <div>${formatSubjectBadge(s.subject)}</div>
           </div>
           <img class="badge-qr" src="${s.qrCode}" alt="QR" />
         </div>
@@ -960,6 +1131,7 @@
     window.print();
   }
 
+  // --- Staff Management & Payroll ---
   async function loadStaff() {
     refreshActiveStaff();
 

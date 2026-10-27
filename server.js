@@ -324,7 +324,6 @@ app.get('/api/lobby-board', (req, res) => {
 app.post('/api/students', async (req, res) => {
   let { subject, id, lastName, firstName, parentPhone } = req.body;
 
-  // Auto-generate temp ID if left empty
   if (!id || String(id).trim() === '') {
     id = `TEMP-${Math.floor(100000 + Math.random() * 900000)}`;
   } else {
