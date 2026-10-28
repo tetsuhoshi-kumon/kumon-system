@@ -68,15 +68,33 @@ const studentAttendanceLogSchema = new mongoose.Schema({
   date: String
 });
 
+// --- Persistent Active Session Schemas ---
+const activeStudentSessionSchema = new mongoose.Schema({
+  studentId: { type: String, required: true, unique: true },
+  firstName: String,
+  lastName: String,
+  subject: { type: String, default: 'Math' },
+  parentPhone: String,
+  seatNumber: { type: String, default: 'Unassigned' },
+  checkInTime: { type: Date, default: Date.now },
+  isReady: { type: Boolean, default: false },
+  readyTime: String
+});
+
+const activeStaffSessionSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  firstName: String,
+  lastName: String,
+  role: { type: String, default: 'Assistant' },
+  checkInTime: { type: Date, default: Date.now }
+});
+
 const Student = mongoose.model('Student', studentSchema);
 const Employee = mongoose.model('Employee', employeeSchema);
 const StaffShiftLog = mongoose.model('StaffShiftLog', staffShiftLogSchema);
 const StudentAttendanceLog = mongoose.model('StudentAttendanceLog', studentAttendanceLogSchema);
-
-// In-Memory Live State
-const activeStudentSessions = new Map();
-const activeStaffSessions = new Map();
-const readyForPickupList = [];
+const ActiveStudentSession = mongoose.model('ActiveStudentSession', activeStudentSessionSchema);
+const ActiveStaffSession = mongoose.model('ActiveStaffSession', activeStaffSessionSchema);
 
 // --- 1. Kiosk Scan Endpoint ---
 app.post('/api/scan', async (req, res) => {
@@ -88,9 +106,11 @@ app.post('/api/scan', async (req, res) => {
     // Check Staff Clock-In / Clock-Out
     const staffMember = await Employee.findOne({ id: cleanId });
     if (staffMember) {
-      if (activeStaffSessions.has(staffMember.id)) {
-        const session = activeStaffSessions.get(staffMember.id);
-        const durationMinutes = Math.round((now - session.checkInTime) / 60000);
+      const activeSession = await ActiveStaffSession.findOne({ id: staffMember.id });
+
+      if (activeSession) {
+        const checkInTime = new Date(activeSession.checkInTime);
+        const durationMinutes = Math.round((now - checkInTime) / 60000);
         const hours = (durationMinutes / 60).toFixed(2);
 
         const logEntry = new StaffShiftLog({
@@ -98,7 +118,7 @@ app.post('/api/scan', async (req, res) => {
           id: staffMember.id,
           lastName: staffMember.lastName,
           firstName: staffMember.firstName,
-          clockIn: getTime(session.checkInTime),
+          clockIn: getTime(checkInTime),
           clockOut: getTime(now),
           durationMinutes,
           hoursWorked: parseFloat(hours),
@@ -106,7 +126,7 @@ app.post('/api/scan', async (req, res) => {
         });
 
         await logEntry.save();
-        activeStaffSessions.delete(staffMember.id);
+        await ActiveStaffSession.deleteOne({ id: staffMember.id });
 
         return res.json({
           type: "STAFF",
@@ -117,14 +137,14 @@ app.post('/api/scan', async (req, res) => {
           log: logEntry
         });
       } else {
-        const session = {
+        const session = new ActiveStaffSession({
           role: staffMember.role,
           id: staffMember.id,
           lastName: staffMember.lastName,
           firstName: staffMember.firstName,
           checkInTime: now
-        };
-        activeStaffSessions.set(staffMember.id, session);
+        });
+        await session.save();
 
         return res.json({
           type: "STAFF",
@@ -140,26 +160,25 @@ app.post('/api/scan', async (req, res) => {
     // Check Student Check-In / Check-Out
     const student = await Student.findOne({ id: cleanId });
     if (student) {
-      if (activeStudentSessions.has(student.id)) {
-        const session = activeStudentSessions.get(student.id);
-        const durationMinutes = Math.round((now - session.checkInTime) / 60000);
+      const activeSession = await ActiveStudentSession.findOne({ studentId: student.id });
+
+      if (activeSession) {
+        const checkInTime = new Date(activeSession.checkInTime);
+        const durationMinutes = Math.round((now - checkInTime) / 60000);
 
         const logEntry = new StudentAttendanceLog({
           subject: student.subject,
           studentId: student.id,
           lastName: student.lastName,
           firstName: student.firstName,
-          checkIn: getTime(session.checkInTime),
+          checkIn: getTime(checkInTime),
           checkOut: getTime(now),
           durationMinutes,
           date: getDate(now)
         });
 
         await logEntry.save();
-        activeStudentSessions.delete(student.id);
-
-        const pIdx = readyForPickupList.findIndex(p => p.studentId === student.id);
-        if (pIdx >= 0) readyForPickupList.splice(pIdx, 1);
+        await ActiveStudentSession.deleteOne({ studentId: student.id });
 
         return res.json({
           type: "STUDENT",
@@ -171,16 +190,17 @@ app.post('/api/scan', async (req, res) => {
           log: logEntry
         });
       } else {
-        const session = {
+        const session = new ActiveStudentSession({
           subject: student.subject,
           studentId: student.id,
           lastName: student.lastName,
           firstName: student.firstName,
           parentPhone: student.parentPhone || '',
           seatNumber: seatNumber || "Unassigned",
-          checkInTime: now
-        };
-        activeStudentSessions.set(student.id, session);
+          checkInTime: now,
+          isReady: false
+        });
+        await session.save();
 
         return res.json({
           type: "STUDENT",
@@ -214,8 +234,8 @@ app.post('/api/checkout', async (req, res) => {
       return res.status(404).json({ success: false, message: `Student ID "${cleanId}" not found.` });
     }
 
-    const session = activeStudentSessions.get(cleanId);
-    const startTime = session ? session.checkInTime : now;
+    const session = await ActiveStudentSession.findOne({ studentId: cleanId });
+    const startTime = session ? new Date(session.checkInTime) : now;
     const durationMinutes = Math.round((now - startTime) / 60000);
 
     const logEntry = new StudentAttendanceLog({
@@ -223,17 +243,14 @@ app.post('/api/checkout', async (req, res) => {
       studentId: student.id,
       lastName: student.lastName,
       firstName: student.firstName,
-      checkIn: session ? getTime(session.checkInTime) : getTime(now),
+      checkIn: session ? getTime(startTime) : getTime(now),
       checkOut: getTime(now),
       durationMinutes,
       date: getDate(now)
     });
 
     await logEntry.save();
-
-    if (activeStudentSessions.has(cleanId)) activeStudentSessions.delete(cleanId);
-    const pIdx = readyForPickupList.findIndex(p => p.studentId === cleanId);
-    if (pIdx >= 0) readyForPickupList.splice(pIdx, 1);
+    if (session) await ActiveStudentSession.deleteOne({ studentId: cleanId });
 
     res.json({
       success: true,
@@ -257,8 +274,8 @@ app.post('/api/staff-checkout', async (req, res) => {
       return res.status(404).json({ success: false, message: `Employee ID "${cleanId}" not found.` });
     }
 
-    const session = activeStaffSessions.get(cleanId);
-    const startTime = session ? session.checkInTime : now;
+    const session = await ActiveStaffSession.findOne({ id: cleanId });
+    const startTime = session ? new Date(session.checkInTime) : now;
     const durationMinutes = Math.round((now - startTime) / 60000);
     const hours = (durationMinutes / 60).toFixed(2);
 
@@ -267,7 +284,7 @@ app.post('/api/staff-checkout', async (req, res) => {
       id: employee.id,
       lastName: employee.lastName,
       firstName: employee.firstName,
-      clockIn: session ? getTime(session.checkInTime) : getTime(now),
+      clockIn: session ? getTime(startTime) : getTime(now),
       clockOut: getTime(now),
       durationMinutes,
       hoursWorked: parseFloat(hours),
@@ -275,8 +292,7 @@ app.post('/api/staff-checkout', async (req, res) => {
     });
 
     await logEntry.save();
-
-    if (activeStaffSessions.has(cleanId)) activeStaffSessions.delete(cleanId);
+    if (session) await ActiveStaffSession.deleteOne({ id: cleanId });
 
     res.json({
       success: true,
@@ -290,34 +306,51 @@ app.post('/api/staff-checkout', async (req, res) => {
 });
 
 // --- 3. Pickup & Lobby Board ---
-app.post('/api/ready-pickup', (req, res) => {
+app.post('/api/ready-pickup', async (req, res) => {
   const { studentId } = req.body;
-  const session = activeStudentSessions.get(studentId);
+  const cleanId = String(studentId || '').trim();
 
-  if (!session) return res.status(404).json({ success: false, message: "Student is not currently checked in." });
+  try {
+    const session = await ActiveStudentSession.findOne({ studentId: cleanId });
+    if (!session) {
+      return res.status(404).json({ success: false, message: "Student is not currently checked in." });
+    }
 
-  if (!readyForPickupList.some(p => p.studentId === studentId)) {
-    readyForPickupList.push({
-      studentId: session.studentId,
-      firstName: session.firstName,
-      lastName: session.lastName,
-      seatNumber: session.seatNumber,
-      readyTime: getTime(new Date())
-    });
+    session.isReady = true;
+    session.readyTime = getTime(new Date());
+    await session.save();
+
+    res.json({ success: true, message: `${session.firstName} ${session.lastName} marked READY FOR PICKUP!` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to mark student ready.' });
   }
-
-  res.json({ success: true, message: `${session.firstName} ${session.lastName} marked READY FOR PICKUP!` });
 });
 
-app.get('/api/lobby-board', (req, res) => {
-  const studying = Array.from(activeStudentSessions.values()).map(s => ({
-    firstName: s.firstName,
-    lastNameInitial: s.lastName ? s.lastName[0] + '.' : '',
-    seatNumber: s.seatNumber,
-    subject: s.subject
-  }));
+app.get('/api/lobby-board', async (req, res) => {
+  try {
+    const active = await ActiveStudentSession.find();
 
-  res.json({ studying, readyForPickup: readyForPickupList });
+    const studying = active.map(s => ({
+      firstName: s.firstName,
+      lastNameInitial: s.lastName ? s.lastName[0] + '.' : '',
+      seatNumber: s.seatNumber,
+      subject: s.subject
+    }));
+
+    const readyForPickup = active
+      .filter(s => s.isReady)
+      .map(s => ({
+        studentId: s.studentId,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        seatNumber: s.seatNumber,
+        readyTime: s.readyTime
+      }));
+
+    res.json({ studying, readyForPickup });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch lobby board." });
+  }
 });
 
 // --- 4. Student Management (Add, QR, Edit, Delete, Temp IDs) ---
@@ -372,23 +405,17 @@ app.put('/api/students/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: `Student ID "${studentId}" not found.` });
     }
 
-    if (activeStudentSessions.has(studentId)) {
-      const session = activeStudentSessions.get(studentId);
-      activeStudentSessions.delete(studentId);
-      session.studentId = targetId;
-      session.firstName = updatedStudent.firstName;
-      session.lastName = updatedStudent.lastName;
-      session.subject = updatedStudent.subject;
-      session.parentPhone = updatedStudent.parentPhone;
-      activeStudentSessions.set(targetId, session);
-    }
-
-    const pickupItem = readyForPickupList.find(p => p.studentId === studentId);
-    if (pickupItem) {
-      pickupItem.studentId = targetId;
-      pickupItem.firstName = updatedStudent.firstName;
-      pickupItem.lastName = updatedStudent.lastName;
-    }
+    // Keep active session in sync if student info changes while in center
+    await ActiveStudentSession.updateMany(
+      { studentId },
+      {
+        studentId: targetId,
+        firstName: updatedStudent.firstName,
+        lastName: updatedStudent.lastName,
+        subject: updatedStudent.subject,
+        parentPhone: updatedStudent.parentPhone
+      }
+    );
 
     res.json({ success: true, message: `Updated student ${updatedStudent.firstName} ${updatedStudent.lastName}!` });
   } catch (err) {
@@ -403,9 +430,7 @@ app.delete('/api/students/:id', async (req, res) => {
     if (!deletedStudent) {
       return res.status(404).json({ success: false, message: `Student ID "${studentId}" not found.` });
     }
-    if (activeStudentSessions.has(studentId)) activeStudentSessions.delete(studentId);
-    const pIdx = readyForPickupList.findIndex(p => p.studentId === studentId);
-    if (pIdx >= 0) readyForPickupList.splice(pIdx, 1);
+    await ActiveStudentSession.deleteMany({ studentId });
 
     res.json({ success: true, message: `Student ${deletedStudent.firstName} ${deletedStudent.lastName} removed.` });
   } catch (err) {
@@ -457,12 +482,14 @@ app.put('/api/employees/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: `Employee ID "${employeeId}" not found.` });
     }
 
-    if (activeStaffSessions.has(employeeId)) {
-      const session = activeStaffSessions.get(employeeId);
-      session.firstName = updatedEmployee.firstName;
-      session.lastName = updatedEmployee.lastName;
-      session.role = updatedEmployee.role;
-    }
+    await ActiveStaffSession.updateMany(
+      { id: employeeId },
+      {
+        firstName: updatedEmployee.firstName,
+        lastName: updatedEmployee.lastName,
+        role: updatedEmployee.role
+      }
+    );
 
     res.json({ success: true, message: `Updated employee ${updatedEmployee.firstName} ${updatedEmployee.lastName}!` });
   } catch (err) {
@@ -477,7 +504,7 @@ app.delete('/api/employees/:id', async (req, res) => {
     if (!deletedEmployee) {
       return res.status(404).json({ success: false, message: `Employee ID "${employeeId}" not found.` });
     }
-    if (activeStaffSessions.has(employeeId)) activeStaffSessions.delete(employeeId);
+    await ActiveStaffSession.deleteMany({ id: employeeId });
     res.json({ success: true, message: `Employee ${deletedEmployee.firstName} ${deletedEmployee.lastName} removed.` });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to delete employee.' });
@@ -531,22 +558,54 @@ app.post('/api/upload-roster', upload.single('file'), (req, res) => {
     });
 });
 
-// --- 7. Dashboards & Payroll ---
-app.get('/api/active-students', (req, res) => {
-  res.json(Array.from(activeStudentSessions.values()).map(s => ({
-    ...s,
-    isReady: readyForPickupList.some(p => p.studentId === s.studentId),
-    checkInFormatted: getTime(s.checkInTime),
-    minutesInCenter: Math.round((new Date() - s.checkInTime) / 60000)
-  })));
+// --- 7. Dashboards & Payroll (Reading from MongoDB) ---
+app.get('/api/active-students', async (req, res) => {
+  try {
+    const active = await ActiveStudentSession.find().sort({ checkInTime: 1 });
+    const now = new Date();
+
+    const mapped = active.map(s => {
+      const checkIn = new Date(s.checkInTime);
+      return {
+        studentId: s.studentId,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        subject: s.subject,
+        seatNumber: s.seatNumber,
+        parentPhone: s.parentPhone,
+        isReady: s.isReady,
+        checkInFormatted: getTime(checkIn),
+        minutesInCenter: Math.round((now - checkIn) / 60000)
+      };
+    });
+
+    res.json(mapped);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch active students." });
+  }
 });
 
-app.get('/api/active-staff', (req, res) => {
-  res.json(Array.from(activeStaffSessions.values()).map(s => ({
-    ...s,
-    checkInFormatted: getTime(s.checkInTime),
-    minutesOnDuty: Math.round((new Date() - s.checkInTime) / 60000)
-  })));
+app.get('/api/active-staff', async (req, res) => {
+  try {
+    const active = await ActiveStaffSession.find().sort({ checkInTime: 1 });
+    const now = new Date();
+
+    const mapped = active.map(s => {
+      const checkIn = new Date(s.checkInTime);
+      return {
+        id: s.id,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        role: s.role,
+        checkInFormatted: getTime(checkIn),
+        minutesOnDuty: Math.round((now - checkIn) / 60000)
+      };
+    });
+
+    res.json(mapped);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch active staff." });
+  }
 });
 
 app.get('/api/payroll-summary', async (req, res) => {
@@ -593,7 +652,7 @@ app.get('/api/export/student-logs', async (req, res) => {
 
   try {
     const query = {};
-    if (startDate && endDate) query.date = { $gte: startDate,$lte: endDate };
+    if (startDate && endDate) query.date = { $gte: startDate, $lte: endDate };
     else if (startDate) query.date = { $gte: startDate };
     else if (endDate) query.date = { $lte: endDate };
 
@@ -627,7 +686,7 @@ app.get('/api/export/staff-logs', async (req, res) => {
 
   try {
     const query = {};
-    if (startDate && endDate) query.date = { $gte: startDate,$lte: endDate };
+    if (startDate && endDate) query.date = { $gte: startDate, $lte: endDate };
     else if (startDate) query.date = { $gte: startDate };
     else if (endDate) query.date = { $lte: endDate };
 
