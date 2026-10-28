@@ -113,26 +113,42 @@
     .sheet-page .badge-card:nth-of-type(3n) { margin-right: 0; }
     .sheet-page::after { content: ""; display: table; clear: both; }
 
-    /* Enlarged Badge Typography with No IDs */
+    /* Max-Size 3-Line Badge Typography */
     .badge-info { 
       font-size: 11px; 
-      line-height: 1.3; 
+      line-height: 1.1; 
       overflow: hidden; 
-      max-width: 1.6in; 
+      max-width: 1.62in; 
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
-    .badge-info strong { 
-      font-size: 15px; 
-      display: block; 
-      margin-bottom: 4px; 
+    .badge-name-last { 
+      font-size: 16px; 
+      font-weight: 800; 
+      line-height: 1.1; 
       white-space: nowrap; 
       overflow: hidden; 
       text-overflow: ellipsis; 
+      color: #111;
+      letter-spacing: -0.2px;
     }
-    .badge-qr { width: 0.82in; height: 0.82in; flex-shrink: 0; margin-left: 2px; }
+    .badge-name-first { 
+      font-size: 14px; 
+      font-weight: 600; 
+      line-height: 1.1; 
+      margin-bottom: 2px; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      color: #2c3e50;
+    }
+    .badge-tag-line {
+      font-size: 11px;
+      line-height: 1.1;
+    }
 
+    .badge-qr { width: 0.82in; height: 0.82in; flex-shrink: 0; margin-left: 2px; }
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
 
     .toolbar-box {
@@ -261,7 +277,7 @@
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <h3 style="margin: 0;">Students Currently In Center</h3>
           
-          <!-- Subject Filter Dropdown with Dynamic Counts -->
+          <!-- Subject Filter Dropdown with Dynamic Live Counts -->
           <select id="activeSubjectFilter" class="no-print" onchange="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; font-weight: bold;">
             <option value="ALL">All Subjects (0)</option>
             <option value="MATH">Math Only (0)</option>
@@ -601,10 +617,10 @@
     }
   }
 
-  function printSingleBadge(fullName, id, labelSubtitle, qrDataUrl) {
+  // --- Single Badge Pop-Up Window (Last Name 16px, First Name 14px, Tag 11px) ---
+  function printSingleBadge(lastName, firstName, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
     
-    // Check if subtitle is a staff role or student subject
     const isSubject = labelSubtitle.toLowerCase().includes('math') || labelSubtitle.toLowerCase().includes('read');
     const subtitleHtml = isSubject 
       ? formatSubjectBadge(labelSubtitle) 
@@ -614,7 +630,7 @@
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Badge - ${fullName}</title>
+          <title>Badge - ${lastName}, ${firstName}</title>
           <style>
             @page { size: 2.625in 1in; margin: 0; }
             * { box-sizing: border-box; }
@@ -630,15 +646,26 @@
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .info { line-height: 1.3; font-size: 11px; color: #222; max-width: 1.6in; }
-            .info strong { font-size: 15px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .info { 
+              line-height: 1.1; 
+              font-size: 11px; 
+              color: #222; 
+              max-width: 1.62in; 
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+            .last { font-size: 16px; font-weight: 800; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #111; letter-spacing: -0.2px; }
+            .first { font-size: 14px; font-weight: 600; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
+            .sub { font-size: 11px; line-height: 1.1; }
             .qr { width: 0.85in; height: 0.85in; flex-shrink: 0; }
           </style>
         </head>
         <body>
           <div class="info">
-            <strong>${fullName}</strong>
-            <div>${subtitleHtml}</div>
+            <div class="last">${lastName}</div>
+            <div class="first">${firstName}</div>
+            <div class="sub">${subtitleHtml}</div>
           </div>
           <img class="qr" src="${qrDataUrl}" alt="QR" />
           <script>
@@ -918,8 +945,8 @@
     list.forEach(s => {
       const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
-      const safeFirst = (s.firstName || '').replace(/'/g, "\\'");
       const safeLast = (s.lastName || '').replace(/'/g, "\\'");
+      const safeFirst = (s.firstName || '').replace(/'/g, "\\'");
       const safeSub = (s.subject || 'Math').replace(/'/g, "\\'");
       const safePhone = (s.parentPhone || '').replace(/'/g, "\\'");
       const isChecked = selectedStudentIds.has(s.id) ? 'checked' : '';
@@ -928,13 +955,14 @@
         <div class="badge-card">
           <div class="no-print" style="position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 4px;">
             <input type="checkbox" ${isChecked} onchange="toggleSelectStudent('${s.id}')" title="Queue for batch printing" style="cursor: pointer; width: 16px; height: 16px;" />
-            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${s.id}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
+            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeLast}', '${safeFirst}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
             <button class="chip-btn" style="background: #2980b9;" onclick="editStudent('${s.id}', '${safeFirst}', '${safeLast}', '${safeSub}', '${safePhone}')" title="Edit student">✎</button>
             <button class="chip-btn" style="background: #e74c3c;" onclick="deleteStudent('${s.id}', '${safeFull}')" title="Delete student">✕</button>
           </div>
           <div class="badge-info">
-            <strong>${s.firstName} ${s.lastName}</strong>
-            <div style="font-size: 11px;">${formatSubjectBadge(s.subject)}</div>
+            <div class="badge-name-last">${s.lastName || ''}</div>
+            <div class="badge-name-first">${s.firstName || ''}</div>
+            <div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div>
           </div>
           <img class="badge-qr" src="${s.qrCode}" alt="QR" />
         </div>
@@ -1106,18 +1134,22 @@
     list.forEach(e => {
       const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
       const safeFull = fullName.replace(/'/g, "\\'");
+      const safeLast = (e.lastName || '').replace(/'/g, "\\'");
+      const safeFirst = (e.firstName || '').replace(/'/g, "\\'");
       const roleText = e.role || 'Staff';
+      const safeRole = roleText.replace(/'/g, "\\'");
       const isChecked = selectedStaffIds.has(e.id) ? 'checked' : '';
 
       items.push(`
         <div class="badge-card">
           <div class="no-print" style="position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 4px;">
             <input type="checkbox" ${isChecked} onchange="toggleSelectStaff('${e.id}')" title="Queue for printing" style="cursor: pointer; width: 16px; height: 16px;" />
-            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeFull}', '${e.id}', '${roleText}', '${e.qrCode}')" title="Print single staff badge">🖨️</button>
+            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeLast}', '${safeFirst}', '${safeRole}', '${e.qrCode}')" title="Print single staff badge">🖨️</button>
           </div>
           <div class="badge-info">
-            <strong>${e.firstName} ${e.lastName}</strong>
-            <div style="color: #27ae60; font-weight: bold; font-size: 11px;">${roleText}</div>
+            <div class="badge-name-last">${e.lastName || ''}</div>
+            <div class="badge-name-first">${e.firstName || ''}</div>
+            <div class="badge-tag-line" style="color: #27ae60; font-weight: bold;">${roleText}</div>
           </div>
           <img class="badge-qr" src="${e.qrCode}" alt="Staff QR" />
         </div>
