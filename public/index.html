@@ -113,8 +113,24 @@
     .sheet-page .badge-card:nth-of-type(3n) { margin-right: 0; }
     .sheet-page::after { content: ""; display: table; clear: both; }
 
-    .badge-info { font-size: 10px; line-height: 1.25; overflow: hidden; max-width: 1.5in; }
-    .badge-info strong { font-size: 11px; display: block; margin-bottom: 2px; white-space: nowrap; text-overflow: ellipsis; }
+    /* Enlarged Badge Typography with No IDs */
+    .badge-info { 
+      font-size: 11px; 
+      line-height: 1.3; 
+      overflow: hidden; 
+      max-width: 1.6in; 
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .badge-info strong { 
+      font-size: 15px; 
+      display: block; 
+      margin-bottom: 4px; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
     .badge-qr { width: 0.82in; height: 0.82in; flex-shrink: 0; margin-left: 2px; }
 
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
@@ -587,7 +603,12 @@
 
   function printSingleBadge(fullName, id, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
-    const coloredSub = formatSubjectBadge(labelSubtitle);
+    
+    // Check if subtitle is a staff role or student subject
+    const isSubject = labelSubtitle.toLowerCase().includes('math') || labelSubtitle.toLowerCase().includes('read');
+    const subtitleHtml = isSubject 
+      ? formatSubjectBadge(labelSubtitle) 
+      : `<span style="color: #27ae60 !important; font-weight: bold;">${labelSubtitle}</span>`;
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -609,16 +630,15 @@
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .info { line-height: 1.25; font-size: 11px; color: #222; }
-            .info strong { font-size: 13px; display: block; margin-bottom: 2px; }
+            .info { line-height: 1.3; font-size: 11px; color: #222; max-width: 1.6in; }
+            .info strong { font-size: 15px; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .qr { width: 0.85in; height: 0.85in; flex-shrink: 0; }
           </style>
         </head>
         <body>
           <div class="info">
             <strong>${fullName}</strong>
-            <div>ID: ${id}</div>
-            <div>${coloredSub}</div>
+            <div>${subtitleHtml}</div>
           </div>
           <img class="qr" src="${qrDataUrl}" alt="QR" />
           <script>
@@ -914,8 +934,7 @@
           </div>
           <div class="badge-info">
             <strong>${s.firstName} ${s.lastName}</strong>
-            <div>ID: ${s.id}</div>
-            <div>${formatSubjectBadge(s.subject)}</div>
+            <div style="font-size: 11px;">${formatSubjectBadge(s.subject)}</div>
           </div>
           <img class="badge-qr" src="${s.qrCode}" alt="QR" />
         </div>
@@ -1098,8 +1117,7 @@
           </div>
           <div class="badge-info">
             <strong>${e.firstName} ${e.lastName}</strong>
-            <div>ID: ${e.id}</div>
-            <div style="color: #27ae60; font-weight: bold;">${roleText}</div>
+            <div style="color: #27ae60; font-weight: bold; font-size: 11px;">${roleText}</div>
           </div>
           <img class="badge-qr" src="${e.qrCode}" alt="Staff QR" />
         </div>
