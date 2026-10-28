@@ -113,30 +113,32 @@
     .sheet-page .badge-card:nth-of-type(3n) { margin-right: 0; }
     .sheet-page::after { content: ""; display: table; clear: both; }
 
-    /* Max-Size 3-Line Badge Typography */
+    /* Ultra-Large Badge Typography (Last Name 20px, First Name 16px) */
     .badge-info { 
       font-size: 11px; 
-      line-height: 1.1; 
+      line-height: 1.05; 
       overflow: hidden; 
-      max-width: 1.62in; 
+      max-width: 1.68in; 
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
     .badge-name-last { 
-      font-size: 16px; 
-      font-weight: 800; 
-      line-height: 1.1; 
+      font-size: 20px; 
+      font-weight: 900; 
+      line-height: 1.05; 
+      letter-spacing: -0.3px;
       white-space: nowrap; 
       overflow: hidden; 
       text-overflow: ellipsis; 
-      color: #111;
-      letter-spacing: -0.2px;
+      color: #000;
     }
     .badge-name-first { 
-      font-size: 14px; 
-      font-weight: 600; 
-      line-height: 1.1; 
+      font-size: 16px; 
+      font-weight: 700; 
+      line-height: 1.05; 
+      letter-spacing: -0.2px;
+      margin-top: 1px;
       margin-bottom: 2px; 
       white-space: nowrap; 
       overflow: hidden; 
@@ -145,10 +147,11 @@
     }
     .badge-tag-line {
       font-size: 11px;
-      line-height: 1.1;
+      line-height: 1.05;
     }
 
-    .badge-qr { width: 0.82in; height: 0.82in; flex-shrink: 0; margin-left: 2px; }
+    /* Optimized 0.78in QR code for maximum text clearance */
+    .badge-qr { width: 0.78in; height: 0.78in; flex-shrink: 0; margin-left: 2px; }
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
 
     .toolbar-box {
@@ -242,6 +245,11 @@
         border: none !important;
         height: 1.0in !important;
         width: 2.625in !important;
+      }
+
+      .badge-qr {
+        width: 0.78in !important;
+        height: 0.78in !important;
       }
     }
   </style>
@@ -617,7 +625,7 @@
     }
   }
 
-  // --- Single Badge Pop-Up Window (Last Name 16px, First Name 14px, Tag 11px) ---
+  // --- Single Badge Pop-Up Window (Last Name 20px, First Name 16px, Subtitle 11px) ---
   function printSingleBadge(lastName, firstName, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
     
@@ -647,18 +655,18 @@
               print-color-adjust: exact !important;
             }
             .info { 
-              line-height: 1.1; 
+              line-height: 1.05; 
               font-size: 11px; 
               color: #222; 
-              max-width: 1.62in; 
+              max-width: 1.68in; 
               display: flex;
               flex-direction: column;
               justify-content: center;
             }
-            .last { font-size: 16px; font-weight: 800; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #111; letter-spacing: -0.2px; }
-            .first { font-size: 14px; font-weight: 600; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
-            .sub { font-size: 11px; line-height: 1.1; }
-            .qr { width: 0.85in; height: 0.85in; flex-shrink: 0; }
+            .last { font-size: 20px; font-weight: 900; line-height: 1.05; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
+            .first { font-size: 16px; font-weight: 700; line-height: 1.05; letter-spacing: -0.2px; margin-top: 1px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
+            .sub { font-size: 11px; line-height: 1.05; }
+            .qr { width: 0.78in; height: 0.78in; flex-shrink: 0; }
           </style>
         </head>
         <body>
@@ -1132,8 +1140,6 @@
     }
 
     list.forEach(e => {
-      const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
-      const safeFull = fullName.replace(/'/g, "\\'");
       const safeLast = (e.lastName || '').replace(/'/g, "\\'");
       const safeFirst = (e.firstName || '').replace(/'/g, "\\'");
       const roleText = e.role || 'Staff';
