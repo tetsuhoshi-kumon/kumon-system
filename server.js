@@ -68,7 +68,7 @@ const studentAttendanceLogSchema = new mongoose.Schema({
   date: String
 });
 
-// --- Persistent Active Session Schemas ---
+// Persistent Active Session Schemas
 const activeStudentSessionSchema = new mongoose.Schema({
   studentId: { type: String, required: true, unique: true },
   firstName: String,
@@ -96,7 +96,21 @@ const StudentAttendanceLog = mongoose.model('StudentAttendanceLog', studentAtten
 const ActiveStudentSession = mongoose.model('ActiveStudentSession', activeStudentSessionSchema);
 const ActiveStaffSession = mongoose.model('ActiveStaffSession', activeStaffSessionSchema);
 
-// --- 1. Kiosk Scan Endpoint ---
+// Collision-Proof Temporary ID Generator
+async function generateUniqueTempId() {
+  let unique = false;
+  let tempId = '';
+  while (!unique) {
+    const timePart = Date.now().toString(36).toUpperCase().slice(-5);
+    const randPart = Math.floor(10 + Math.random() * 90);
+    tempId = `TEMP-${timePart}-${randPart}`;
+    const existing = await Student.findOne({ id: tempId });
+    if (!existing) unique = true;
+  }
+  return tempId;
+}
+
+// --- 1. Kiosk Scan Endpoint with 30-Second Cooldown ---
 app.post('/api/scan', async (req, res) => {
   const { scanId, seatNumber } = req.body;
   const cleanId = String(scanId || '').trim();
@@ -110,6 +124,15 @@ app.post('/api/scan', async (req, res) => {
 
       if (activeSession) {
         const checkInTime = new Date(activeSession.checkInTime);
+        const secondsElapsed = Math.round((now - checkInTime) / 1000);
+
+        if (secondsElapsed < 30) {
+          return res.status(400).json({
+            success: false,
+            message: `${staffMember.firstName} already clocked in (${secondsElapsed}s ago). Wait ${30 - secondsElapsed}s before clocking out.`
+          });
+        }
+
         const durationMinutes = Math.round((now - checkInTime) / 60000);
         const hours = (durationMinutes / 60).toFixed(2);
 
@@ -164,6 +187,15 @@ app.post('/api/scan', async (req, res) => {
 
       if (activeSession) {
         const checkInTime = new Date(activeSession.checkInTime);
+        const secondsElapsed = Math.round((now - checkInTime) / 1000);
+
+        if (secondsElapsed < 30) {
+          return res.status(400).json({
+            success: false,
+            message: `${student.firstName} already checked in (${secondsElapsed}s ago). Wait ${30 - secondsElapsed}s before checking out.`
+          });
+        }
+
         const durationMinutes = Math.round((now - checkInTime) / 60000);
 
         const logEntry = new StudentAttendanceLog({
@@ -353,14 +385,23 @@ app.get('/api/lobby-board', async (req, res) => {
   }
 });
 
-// --- 4. Student Management (Add, QR, Edit, Delete, Temp IDs) ---
+// --- 4. Student Management (Add with Collision & Overwrite Protection) ---
 app.post('/api/students', async (req, res) => {
-  let { subject, id, lastName, firstName, parentPhone } = req.body;
+  let { subject, id, lastName, firstName, parentPhone, isNewRegistration } = req.body;
 
   if (!id || String(id).trim() === '') {
-    id = `TEMP-${Math.floor(100000 + Math.random() * 900000)}`;
+    id = await generateUniqueTempId();
   } else {
     id = String(id).trim();
+    if (isNewRegistration) {
+      const existingStudent = await Student.findOne({ id });
+      if (existingStudent) {
+        return res.status(400).json({
+          success: false,
+          message: `ID "${id}" is already assigned to ${existingStudent.firstName} ${existingStudent.lastName}.`
+        });
+      }
+    }
   }
 
   try {
@@ -389,6 +430,16 @@ app.put('/api/students/:id', async (req, res) => {
   try {
     const targetId = newId && String(newId).trim() !== '' ? String(newId).trim() : studentId;
 
+    if (targetId !== studentId) {
+      const exists = await Student.findOne({ id: targetId });
+      if (exists) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot update ID: "${targetId}" is already registered to ${exists.firstName} ${exists.lastName}.`
+        });
+      }
+    }
+
     const updatedStudent = await Student.findOneAndUpdate(
       { id: studentId },
       {
@@ -405,7 +456,6 @@ app.put('/api/students/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: `Student ID "${studentId}" not found.` });
     }
 
-    // Keep active session in sync if student info changes while in center
     await ActiveStudentSession.updateMany(
       { studentId },
       {
@@ -447,7 +497,7 @@ app.get('/api/students-qr', async (req, res) => {
   res.json(list);
 });
 
-// --- 5. Employee Management (Add, QR, Edit, Delete) ---
+// --- 5. Employee Management ---
 app.post('/api/employees', async (req, res) => {
   const { id, firstName, lastName, role } = req.body;
   await Employee.findOneAndUpdate(
@@ -558,7 +608,7 @@ app.post('/api/upload-roster', upload.single('file'), (req, res) => {
     });
 });
 
-// --- 7. Dashboards & Payroll (Reading from MongoDB) ---
+// --- 7. Dashboards & Payroll ---
 app.get('/api/active-students', async (req, res) => {
   try {
     const active = await ActiveStudentSession.find().sort({ checkInTime: 1 });
@@ -715,6 +765,43 @@ app.get('/api/export/staff-logs', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to export staff logs.' });
   }
 });
+
+// Auto-checkout students left active for > 3 hours or overnight
+async function cleanStaleSessions() {
+  try {
+    const active = await ActiveStudentSession.find();
+    const now = new Date();
+
+    for (const s of active) {
+      const checkIn = new Date(s.checkInTime);
+      const minutesElapsed = Math.round((now - checkIn) / 60000);
+
+      if (minutesElapsed > 180) {
+        const isDual = (s.subject || '').toLowerCase().includes('&');
+        const defaultMinutes = isDual ? 60 : 45;
+
+        const autoLog = new StudentAttendanceLog({
+          subject: s.subject,
+          studentId: s.studentId,
+          lastName: s.lastName,
+          firstName: s.firstName,
+          checkIn: getTime(checkIn),
+          checkOut: getTime(new Date(checkIn.getTime() + defaultMinutes * 60000)),
+          durationMinutes: defaultMinutes,
+          date: getDate(checkIn)
+        });
+
+        await autoLog.save();
+        await ActiveStudentSession.deleteOne({ studentId: s.studentId });
+        console.log(`[Auto-Clean] Cleared stale session for ${s.firstName} ${s.lastName} (capped at ${defaultMinutes}m).`);
+      }
+    }
+  } catch (err) {
+    console.error('Error during stale session cleanup:', err);
+  }
+}
+
+setInterval(cleanStaleSessions, 15 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));

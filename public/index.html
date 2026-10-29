@@ -150,7 +150,6 @@
       line-height: 1.05;
     }
 
-    /* Optimized 0.78in QR code for maximum text clearance */
     .badge-qr { width: 0.78in; height: 0.78in; flex-shrink: 0; margin-left: 2px; }
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
 
@@ -285,7 +284,6 @@
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <h3 style="margin: 0;">Students Currently In Center</h3>
           
-          <!-- Subject Filter Dropdown with Dynamic Live Counts -->
           <select id="activeSubjectFilter" class="no-print" onchange="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; font-weight: bold;">
             <option value="ALL">All Subjects (0)</option>
             <option value="MATH">Math Only (0)</option>
@@ -293,7 +291,6 @@
             <option value="DUAL">Math &amp; Reading (0)</option>
           </select>
 
-          <!-- Instant Active Student Search Bar -->
           <input type="text" id="activeSearchInput" class="no-print" placeholder="Search name or ID..." oninput="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; width: 170px;" />
         </div>
 
@@ -370,7 +367,7 @@
         </div>
       </div>
 
-      <!-- Add Student Form with Visible Temp ID Generator -->
+      <!-- Add Student Form with Collision-Proof Generator -->
       <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
         <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
@@ -393,7 +390,6 @@
       </div>
     </div>
 
-    <!-- Student Badge Containers rendered into discrete .sheet-page physical pages -->
     <div id="badgeContainer"></div>
   </div>
 
@@ -427,7 +423,7 @@
       </table>
     </div>
 
-    <!-- Staff ID Badges Printable View with Batch Controls -->
+    <!-- Staff ID Badges Printable View -->
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
         <h3>Staff ID Badges</h3>
@@ -497,14 +493,13 @@
   const selectedStudentIds = new Set();
   const selectedStaffIds = new Set();
 
-  // --- Robust Hardware Barcode / QR Scanner Listener ---
+  // --- Hardware Scanner Key Listener ---
   (function initGlobalScanner() {
     let scanBuffer = '';
     let lastCharTime = 0;
     const SCANNER_MAX_INTERVAL_MS = 120;
 
     window.addEventListener('keydown', (e) => {
-      // If typing in any form input (except scanInput), ignore completely to prevent focus hijacking
       if (e.target && e.target.matches('input, select, textarea') && e.target.id !== 'scanInput') {
         return;
       }
@@ -569,7 +564,6 @@
     if (tabId === 'staff') loadStaff();
   }
 
-  // --- Format Subject as Colored Text for Printed Badges ---
   function formatSubjectBadge(subject) {
     const raw = (subject || 'Math').trim();
     const lower = raw.toLowerCase();
@@ -589,7 +583,6 @@
     }
   }
 
-  // --- Format Subject as Soft Pill Badges for Tables ---
   function formatSubjectPill(subject) {
     const raw = (subject || 'Math').trim();
     const lower = raw.toLowerCase();
@@ -615,9 +608,12 @@
     }
   }
 
+  // Millisecond Base-36 Timestamp Generator: Guarantees unique, compact IDs
   function generateStudentTempId() {
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    const tempId = `TEMP-${randomNum}`;
+    const timePart = Date.now().toString(36).toUpperCase().slice(-5);
+    const randPart = Math.floor(10 + Math.random() * 90);
+    const tempId = `TEMP-${timePart}-${randPart}`;
+    
     const idInput = document.getElementById('newStdId');
     if (idInput) {
       idInput.value = tempId;
@@ -625,7 +621,6 @@
     }
   }
 
-  // --- Single Badge Pop-Up Window (Last Name 20px, First Name 16px, Subtitle 11px) ---
   function printSingleBadge(lastName, firstName, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
     
@@ -716,7 +711,6 @@
     if (e.key === 'Enter') handleScan();
   });
 
-  // --- Active Students Dashboard ---
   async function refreshActive() {
     const res = await fetch('/api/active-students');
     currentActiveStudents = await res.json();
@@ -731,7 +725,6 @@
     const tbody = document.querySelector('#activeStudentsTable tbody');
     if (!tbody) return;
 
-    // 1. Calculate live counts across current sessions
     let countTotal = currentActiveStudents.length;
     let countMath = 0;
     let countReading = 0;
@@ -754,7 +747,6 @@
       }
     });
 
-    // 2. Update the dropdown option labels dynamically
     if (filterSelect) {
       const optAll = filterSelect.querySelector('option[value="ALL"]');
       const optMath = filterSelect.querySelector('option[value="MATH"]');
@@ -767,7 +759,6 @@
       if (optDual) optDual.textContent = `Math & Reading (${countDual})`;
     }
 
-    // 3. Filter list based on both subject category and the search text
     const filtered = currentActiveStudents.filter(s => {
       const sub = (s.subject || '').toLowerCase().trim();
       const isDual = 
@@ -792,7 +783,6 @@
       return idMatch || firstMatch || lastMatch || fullMatch;
     });
 
-    // 4. Render empty state or student rows
     if (filtered.length === 0) {
       const emptyMsg = searchQuery 
         ? `No students matching "${searchQuery}".` 
@@ -872,7 +862,6 @@
     refreshActive();
   }
 
-  // --- Lobby Board ---
   async function refreshLobby() {
     const res = await fetch('/api/lobby-board');
     const data = await res.json();
@@ -891,7 +880,6 @@
     `).join('');
   }
 
-  // --- Student Badges & Avery Offset Printing ---
   function populateSlotDropdown() {
     const select = document.getElementById('startSlotSelect');
     if (!select || select.children.length > 0) return;
@@ -1025,9 +1013,13 @@
     const res = await fetch('/api/students', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, firstName, lastName, subject, parentPhone })
+      body: JSON.stringify({ id, firstName, lastName, subject, parentPhone, isNewRegistration: true })
     });
     const data = await res.json();
+
+    if (!res.ok) {
+      return alert(data.message || 'Failed to register student.');
+    }
 
     idInput.value = '';
     idInput.style.backgroundColor = '';
@@ -1059,7 +1051,7 @@
 
     if (!newFirst.trim()) return alert('First name is required.');
 
-    await fetch(`/api/students/${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1070,6 +1062,11 @@
         parentPhone: newPhone.trim()
       })
     });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return alert(data.message || 'Failed to update student.');
+    }
 
     if (newId !== id && selectedStudentIds.has(id)) {
       selectedStudentIds.delete(id);
