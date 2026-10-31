@@ -22,6 +22,33 @@ const getTime = (date = new Date()) =>
 const getDate = (date = new Date()) =>
   date.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 
+// Helper to parse custom clock-out strings (e.g., "5:30 PM", "17:30", "5:30")
+function resolveClockOutDate(checkInDate, timeInput) {
+  if (!timeInput || !timeInput.trim()) return new Date();
+
+  const str = timeInput.trim();
+  const match = str.match(/^(\d{1,2}):(\d{2})(?:\s*([ap]m))?$/i);
+  if (!match) return null;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const ampm = match[3] ? match[3].toLowerCase() : null;
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+  if (ampm === 'pm' && hours < 12) hours += 12;
+  if (ampm === 'am' && hours === 12) hours = 0;
+
+  const target = new Date(checkInDate);
+  target.setHours(hours, minutes, 0, 0);
+
+  if (!ampm && target < checkInDate && hours < 12) {
+    target.setHours(hours + 12, minutes, 0, 0);
+  }
+
+  return target;
+}
+
 // --- MongoDB Atlas Connection ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tetsuhoshi_db_user:-BMc_UJc5Bz3XkB@tetsuhoshi-kumon.l0lkzen.mongodb.net/kumon?retryWrites=true&w=majority';
 
@@ -30,6 +57,8 @@ mongoose.connect(MONGO_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 // --- Schemas & Models ---
+
+// 1. Students & Attendance
 const studentSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -38,6 +67,30 @@ const studentSchema = new mongoose.Schema({
   parentPhone: String
 });
 
+const studentAttendanceLogSchema = new mongoose.Schema({
+  subject: String,
+  studentId: String,
+  lastName: String,
+  firstName: String,
+  checkIn: String,
+  checkOut: String,
+  durationMinutes: Number,
+  date: String
+});
+
+const activeStudentSessionSchema = new mongoose.Schema({
+  studentId: { type: String, required: true, unique: true },
+  firstName: String,
+  lastName: String,
+  subject: { type: String, default: 'Math' },
+  parentPhone: String,
+  seatNumber: { type: String, default: 'Unassigned' },
+  checkInTime: { type: Date, default: Date.now },
+  isReady: { type: Boolean, default: false },
+  readyTime: String
+});
+
+// 2. Staff & Payroll
 const employeeSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -57,30 +110,6 @@ const staffShiftLogSchema = new mongoose.Schema({
   date: String
 });
 
-const studentAttendanceLogSchema = new mongoose.Schema({
-  subject: String,
-  studentId: String,
-  lastName: String,
-  firstName: String,
-  checkIn: String,
-  checkOut: String,
-  durationMinutes: Number,
-  date: String
-});
-
-// Persistent Active Session Schemas
-const activeStudentSessionSchema = new mongoose.Schema({
-  studentId: { type: String, required: true, unique: true },
-  firstName: String,
-  lastName: String,
-  subject: { type: String, default: 'Math' },
-  parentPhone: String,
-  seatNumber: { type: String, default: 'Unassigned' },
-  checkInTime: { type: Date, default: Date.now },
-  isReady: { type: Boolean, default: false },
-  readyTime: String
-});
-
 const activeStaffSessionSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -89,14 +118,48 @@ const activeStaffSessionSchema = new mongoose.Schema({
   checkInTime: { type: Date, default: Date.now }
 });
 
+// 3. Book Library
+const bookSchema = new mongoose.Schema({
+  bookId: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  author: { type: String, default: '' },
+  level: { type: String, default: 'General' },
+  bookNumber: { type: String, default: '' },
+  status: { type: String, enum: ['AVAILABLE', 'CHECKED_OUT'], default: 'AVAILABLE' },
+  currentHolderId: { type: String, default: null },
+  currentHolderName: { type: String, default: null },
+  parentPhone: { type: String, default: '' },
+  checkoutDate: { type: String, default: null },
+  checkoutTime: { type: Date, default: null }
+});
+
+const bookLogSchema = new mongoose.Schema({
+  bookId: String,
+  title: String,
+  author: String,
+  level: String,
+  bookNumber: String,
+  studentId: String,
+  studentName: String,
+  parentPhone: String,
+  checkoutDate: String,
+  returnDate: String,
+  daysOut: Number
+});
+
 const Student = mongoose.model('Student', studentSchema);
-const Employee = mongoose.model('Employee', employeeSchema);
-const StaffShiftLog = mongoose.model('StaffShiftLog', staffShiftLogSchema);
 const StudentAttendanceLog = mongoose.model('StudentAttendanceLog', studentAttendanceLogSchema);
 const ActiveStudentSession = mongoose.model('ActiveStudentSession', activeStudentSessionSchema);
+
+const Employee = mongoose.model('Employee', employeeSchema);
+const StaffShiftLog = mongoose.model('StaffShiftLog', staffShiftLogSchema);
 const ActiveStaffSession = mongoose.model('ActiveStaffSession', activeStaffSessionSchema);
 
-// Collision-Proof Temporary ID Generator
+const Book = mongoose.model('Book', bookSchema);
+const BookLog = mongoose.model('BookLog', bookLogSchema);
+
+// --- Collision-Proof ID Generators ---
+
 async function generateUniqueTempId() {
   let unique = false;
   let tempId = '';
@@ -108,6 +171,20 @@ async function generateUniqueTempId() {
     if (!existing) unique = true;
   }
   return tempId;
+}
+
+async function generateUniqueBookId(level = 'GEN') {
+  let unique = false;
+  let bookId = '';
+  const cleanLevel = level.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4) || 'GEN';
+  while (!unique) {
+    const timePart = Date.now().toString(36).toUpperCase().slice(-4);
+    const randPart = Math.floor(10 + Math.random() * 90);
+    bookId = `BK-${cleanLevel}-${timePart}-${randPart}`;
+    const existing = await Book.findOne({ bookId });
+    if (!existing) unique = true;
+  }
+  return bookId;
 }
 
 // --- 1. Kiosk Scan Endpoint with 30-Second Cooldown ---
@@ -296,9 +373,8 @@ app.post('/api/checkout', async (req, res) => {
 });
 
 app.post('/api/staff-checkout', async (req, res) => {
-  const { employeeId } = req.body;
+  const { employeeId, customTime } = req.body;
   const cleanId = String(employeeId || '').trim();
-  const now = new Date();
 
   try {
     const employee = await Employee.findOne({ id: cleanId });
@@ -307,8 +383,26 @@ app.post('/api/staff-checkout', async (req, res) => {
     }
 
     const session = await ActiveStaffSession.findOne({ id: cleanId });
-    const startTime = session ? new Date(session.checkInTime) : now;
-    const durationMinutes = Math.round((now - startTime) / 60000);
+    const startTime = session ? new Date(session.checkInTime) : new Date();
+
+    let endTime = new Date();
+    if (customTime && customTime.trim() !== '') {
+      endTime = resolveClockOutDate(startTime, customTime);
+      if (!endTime) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid time format. Use "5:30 PM", "17:30", or leave blank for current time.'
+        });
+      }
+      if (endTime < startTime) {
+        return res.status(400).json({
+          success: false,
+          message: `Departure time cannot be earlier than check-in time (${getTime(startTime)}).`
+        });
+      }
+    }
+
+    const durationMinutes = Math.round((endTime - startTime) / 60000);
     const hours = (durationMinutes / 60).toFixed(2);
 
     const logEntry = new StaffShiftLog({
@@ -316,11 +410,11 @@ app.post('/api/staff-checkout', async (req, res) => {
       id: employee.id,
       lastName: employee.lastName,
       firstName: employee.firstName,
-      clockIn: session ? getTime(startTime) : getTime(now),
-      clockOut: getTime(now),
+      clockIn: getTime(startTime),
+      clockOut: getTime(endTime),
       durationMinutes,
       hoursWorked: parseFloat(hours),
-      date: getDate(now)
+      date: getDate(startTime)
     });
 
     await logEntry.save();
@@ -328,7 +422,7 @@ app.post('/api/staff-checkout', async (req, res) => {
 
     res.json({
       success: true,
-      message: `Staff Clock-Out: ${employee.firstName} ${employee.lastName} (${hours} hrs worked).`,
+      message: `Staff Clock-Out: ${employee.firstName} ${employee.lastName} (${hours} hrs worked, ended at ${getTime(endTime)}).`,
       log: logEntry
     });
   } catch (err) {
@@ -385,7 +479,7 @@ app.get('/api/lobby-board', async (req, res) => {
   }
 });
 
-// --- 4. Student Management (Add with Collision & Overwrite Protection) ---
+// --- 4. Student Management ---
 app.post('/api/students', async (req, res) => {
   let { subject, id, lastName, firstName, parentPhone, isNewRegistration } = req.body;
 
@@ -481,7 +575,6 @@ app.delete('/api/students/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: `Student ID "${studentId}" not found.` });
     }
     await ActiveStudentSession.deleteMany({ studentId });
-
     res.json({ success: true, message: `Student ${deletedStudent.firstName} ${deletedStudent.lastName} removed.` });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to delete student.' });
@@ -497,7 +590,7 @@ app.get('/api/students-qr', async (req, res) => {
   res.json(list);
 });
 
-// --- 5. Employee Management ---
+// --- 5. Staff Management ---
 app.post('/api/employees', async (req, res) => {
   const { id, firstName, lastName, role } = req.body;
   await Employee.findOneAndUpdate(
@@ -570,45 +663,7 @@ app.get('/api/employees-qr', async (req, res) => {
   res.json(list);
 });
 
-// --- 6. CSV Bulk Upload ---
-app.post('/api/upload-roster', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
-
-  const results = [];
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on('data', (row) => {
-      const id = row.id || row.ID || row['Student ID'] || row['student_id'];
-      const firstName = row.firstName || row['First Name'] || row.first_name || '';
-      const lastName = row.lastName || row['Last Name'] || row.last_name || '';
-      const subject = row.subject || row.Subject || 'Math';
-      const parentPhone = row.parentPhone || row['Parent Phone'] || row.phone || '';
-
-      if (id) {
-        results.push({
-          id: String(id).trim(),
-          firstName: String(firstName).trim(),
-          lastName: String(lastName).trim(),
-          subject: String(subject).trim(),
-          parentPhone: String(parentPhone).trim()
-        });
-      }
-    })
-    .on('end', async () => {
-      try {
-        const operations = results.map(s => ({
-          updateOne: { filter: { id: s.id }, update: { $set: s }, upsert: true }
-        }));
-        if (operations.length > 0) await Student.bulkWrite(operations);
-        fs.unlinkSync(req.file.path);
-        res.json({ success: true, message: `Imported ${results.length} students into MongoDB Atlas!` });
-      } catch (err) {
-        res.status(500).json({ success: false, message: 'Database import failed.' });
-      }
-    });
-});
-
-// --- 7. Dashboards & Payroll ---
+// --- 6. Active Session Lists & Payroll Summaries ---
 app.get('/api/active-students', async (req, res) => {
   try {
     const active = await ActiveStudentSession.find().sort({ checkInTime: 1 });
@@ -696,7 +751,363 @@ app.post('/api/reset-payroll', async (req, res) => {
   res.json({ success: true, message: "Payroll cycle reset successfully." });
 });
 
-// --- 8. Filtered CSV Exports ---
+// --- 7. Shift & Attendance Log Management ---
+app.get('/api/staff-shift-logs', async (req, res) => {
+  const { employeeId } = req.query;
+  try {
+    const query = employeeId ? { id: employeeId } : {};
+    const logs = await StaffShiftLog.find(query).sort({ date: -1, _id: -1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch shift logs.' });
+  }
+});
+
+app.put('/api/staff-shift-logs/:id', async (req, res) => {
+  const { id } = req.params;
+  const { clockIn, clockOut, hoursWorked, date } = req.body;
+
+  try {
+    const hours = parseFloat(hoursWorked);
+    if (isNaN(hours) || hours < 0) {
+      return res.status(400).json({ success: false, message: 'Valid positive hours worked required.' });
+    }
+    const durationMinutes = Math.round(hours * 60);
+
+    const updateFields = {
+      durationMinutes,
+      hoursWorked: parseFloat(hours.toFixed(2))
+    };
+    if (clockIn !== undefined) updateFields.clockIn = clockIn.trim();
+    if (clockOut !== undefined) updateFields.clockOut = clockOut.trim();
+    if (date !== undefined) updateFields.date = date.trim();
+
+    const updatedLog = await StaffShiftLog.findByIdAndUpdate(id, updateFields, { new: true });
+    if (!updatedLog) {
+      return res.status(404).json({ success: false, message: 'Shift log not found.' });
+    }
+
+    res.json({ success: true, message: 'Shift log updated successfully.', log: updatedLog });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update shift log.' });
+  }
+});
+
+app.delete('/api/staff-shift-logs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deletedLog = await StaffShiftLog.findByIdAndDelete(id);
+    if (!deletedLog) {
+      return res.status(404).json({ success: false, message: 'Shift log not found.' });
+    }
+    res.json({ success: true, message: 'Shift log deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete shift log.' });
+  }
+});
+
+app.get('/api/student-attendance-logs', async (req, res) => {
+  const { studentId, startDate, endDate, limit } = req.query;
+  try {
+    const query = {};
+    if (studentId) query.studentId = String(studentId).trim();
+    if (startDate && endDate) query.date = { $gte: startDate, $lte: endDate };
+    else if (startDate) query.date = { $gte: startDate };
+    else if (endDate) query.date = { $lte: endDate };
+
+    const maxLimit = parseInt(limit, 10) || 150;
+    const logs = await StudentAttendanceLog.find(query).sort({ date: -1, _id: -1 }).limit(maxLimit);
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch attendance logs.' });
+  }
+});
+
+app.put('/api/student-attendance-logs/:id', async (req, res) => {
+  const { id } = req.params;
+  const { checkIn, checkOut, durationMinutes, date, subject } = req.body;
+
+  try {
+    const updateFields = {};
+    if (checkIn !== undefined) updateFields.checkIn = String(checkIn).trim();
+    if (checkOut !== undefined) updateFields.checkOut = String(checkOut).trim();
+    if (date !== undefined) updateFields.date = String(date).trim();
+    if (subject !== undefined) updateFields.subject = String(subject).trim();
+
+    if (durationMinutes !== undefined) {
+      const mins = parseInt(durationMinutes, 10);
+      if (isNaN(mins) || mins < 0) {
+        return res.status(400).json({ success: false, message: 'Duration must be positive minutes.' });
+      }
+      updateFields.durationMinutes = mins;
+    }
+
+    const updatedLog = await StudentAttendanceLog.findByIdAndUpdate(id, updateFields, { new: true });
+    if (!updatedLog) {
+      return res.status(404).json({ success: false, message: 'Attendance log not found.' });
+    }
+
+    res.json({ success: true, message: 'Attendance log updated successfully.', log: updatedLog });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update attendance log.' });
+  }
+});
+
+app.delete('/api/student-attendance-logs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deletedLog = await StudentAttendanceLog.findByIdAndDelete(id);
+    if (!deletedLog) {
+      return res.status(404).json({ success: false, message: 'Attendance log not found.' });
+    }
+    res.json({ success: true, message: 'Attendance log deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete attendance log.' });
+  }
+});
+
+// --- 8. Book Library Endpoints ---
+app.get('/api/books/generate-id', async (req, res) => {
+  const { level } = req.query;
+  const bookId = await generateUniqueBookId(level || 'GEN');
+  res.json({ bookId });
+});
+
+app.get('/api/books-qr', async (req, res) => {
+  try {
+    const books = await Book.find().sort({ level: 1, bookNumber: 1, title: 1 });
+    const list = await Promise.all(books.map(async b => ({
+      ...b.toObject(),
+      qrCode: await QRCode.toDataURL(String(b.bookId))
+    })));
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch book barcodes.' });
+  }
+});
+
+app.post('/api/books', async (req, res) => {
+  let { bookId, title, author, level, bookNumber } = req.body;
+
+  if (!title || !title.trim()) {
+    return res.status(400).json({ success: false, message: 'Book title is required.' });
+  }
+
+  if (!bookId || !bookId.trim()) {
+    bookId = await generateUniqueBookId(level || 'GEN');
+  } else {
+    bookId = String(bookId).trim();
+  }
+
+  try {
+    const book = await Book.findOneAndUpdate(
+      { bookId },
+      {
+        bookId,
+        title: String(title).trim(),
+        author: String(author || '').trim(),
+        level: String(level || 'General').trim(),
+        bookNumber: String(bookNumber || '').trim()
+      },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, message: `Saved "${book.title}" (${book.bookId})!`, book });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to save book.' });
+  }
+});
+
+app.delete('/api/books/:id', async (req, res) => {
+  try {
+    await Book.findOneAndDelete({ bookId: req.params.id });
+    res.json({ success: true, message: 'Book deleted from inventory.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete book.' });
+  }
+});
+
+app.post('/api/books/scan', async (req, res) => {
+  const { barcode, studentId } = req.body;
+  const cleanBookId = String(barcode || '').trim();
+  const cleanStudentId = String(studentId || '').trim();
+
+  try {
+    const book = await Book.findOne({ bookId: cleanBookId });
+    if (!book) {
+      return res.status(404).json({ success: false, message: `Book barcode "${cleanBookId}" not registered.` });
+    }
+
+    // Return logic
+    if (book.status === 'CHECKED_OUT') {
+      const checkoutTime = book.checkoutTime ? new Date(book.checkoutTime) : new Date();
+      const daysOut = Math.max(1, Math.round((new Date() - checkoutTime) / (1000 * 60 * 60 * 24)));
+
+      const log = new BookLog({
+        bookId: book.bookId,
+        title: book.title,
+        author: book.author,
+        level: book.level,
+        bookNumber: book.bookNumber,
+        studentId: book.currentHolderId,
+        studentName: book.currentHolderName,
+        parentPhone: book.parentPhone || '',
+        checkoutDate: book.checkoutDate,
+        returnDate: getDate(),
+        daysOut
+      });
+      await log.save();
+
+      const previousHolder = book.currentHolderName;
+      book.status = 'AVAILABLE';
+      book.currentHolderId = null;
+      book.currentHolderName = null;
+      book.parentPhone = '';
+      book.checkoutDate = null;
+      book.checkoutTime = null;
+      await book.save();
+
+      return res.json({
+        success: true,
+        action: 'RETURNED',
+        message: `Returned "${book.title}". Checked back in from ${previousHolder} (${daysOut} day${daysOut > 1 ? 's' : ''} out).`
+      });
+    }
+
+    // Checkout logic
+    if (!cleanStudentId) {
+      return res.status(200).json({
+        success: false,
+        action: 'NEED_STUDENT',
+        bookTitle: book.title,
+        message: `"${book.title}" is available. Please select or scan a Student ID to check it out.`
+      });
+    }
+
+    const student = await Student.findOne({ id: cleanStudentId });
+    if (!student) {
+      return res.status(404).json({ success: false, message: `Student ID "${cleanStudentId}" not found.` });
+    }
+
+    book.status = 'CHECKED_OUT';
+    book.currentHolderId = student.id;
+    book.currentHolderName = `${student.firstName} ${student.lastName}`.trim();
+    book.parentPhone = student.parentPhone || '';
+    book.checkoutDate = getDate();
+    book.checkoutTime = new Date();
+    await book.save();
+
+    return res.json({
+      success: true,
+      action: 'CHECKED_OUT',
+      message: `Checked out "${book.title}" to ${book.currentHolderName} (${student.id}).`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error processing book scan.' });
+  }
+});
+
+// --- 9. CSV Uploads ---
+app.post('/api/upload-roster', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+
+  const results = [];
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('data', (row) => {
+      const id = row.id || row.ID || row['Student ID'] || row['student_id'];
+      const firstName = row.firstName || row['First Name'] || row.first_name || '';
+      const lastName = row.lastName || row['Last Name'] || row.last_name || '';
+      const subject = row.subject || row.Subject || 'Math';
+      const parentPhone = row.parentPhone || row['Parent Phone'] || row.phone || '';
+
+      if (id) {
+        results.push({
+          id: String(id).trim(),
+          firstName: String(firstName).trim(),
+          lastName: String(lastName).trim(),
+          subject: String(subject).trim(),
+          parentPhone: String(parentPhone).trim()
+        });
+      }
+    })
+    .on('end', async () => {
+      try {
+        const operations = results.map(s => ({
+          updateOne: { filter: { id: s.id }, update: { $set: s }, upsert: true }
+        }));
+        if (operations.length > 0) await Student.bulkWrite(operations);
+        fs.unlinkSync(req.file.path);
+        res.json({ success: true, message: `Imported ${results.length} students into MongoDB Atlas!` });
+      } catch (err) {
+        res.status(500).json({ success: false, message: 'Database import failed.' });
+      }
+    });
+});
+
+app.post('/api/upload-books', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+
+  const results = [];
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('data', (row) => {
+      const title = row.title || row.Title || row['Book Title'] || '';
+      const author = row.author || row.Author || '';
+      const level = row.level || row.Level || 'General';
+      const bookNumber = row.bookNumber || row.Number || row['Book Number'] || row['#'] || '';
+      const bookId = row.bookId || row.ID || row['Book ID'] || row.Barcode || '';
+
+      if (String(title).trim()) {
+        results.push({
+          title: String(title).trim(),
+          author: String(author).trim(),
+          level: String(level).trim(),
+          bookNumber: String(bookNumber).trim(),
+          bookId: bookId ? String(bookId).trim() : null
+        });
+      }
+    })
+    .on('end', async () => {
+      try {
+        const operations = [];
+
+        for (const item of results) {
+          let finalId = item.bookId;
+          if (!finalId) {
+            finalId = await generateUniqueBookId(item.level);
+          }
+
+          operations.push({
+            updateOne: {
+              filter: { bookId: finalId },
+              update: {
+                $set: {
+                  bookId: finalId,
+                  title: item.title,
+                  author: item.author,
+                  level: item.level,
+                  bookNumber: item.bookNumber
+                }
+              },
+              upsert: true
+            }
+          });
+        }
+
+        if (operations.length > 0) {
+          await Book.bulkWrite(operations);
+        }
+
+        fs.unlinkSync(req.file.path);
+        res.json({ success: true, message: `Successfully imported ${results.length} books into the library!` });
+      } catch (err) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ success: false, message: 'Failed to process book CSV upload.' });
+      }
+    });
+});
+
+// --- 10. Filtered CSV Exports ---
 app.get('/api/export/student-logs', async (req, res) => {
   const { startDate, endDate } = req.query;
 
@@ -766,7 +1177,71 @@ app.get('/api/export/staff-logs', async (req, res) => {
   }
 });
 
-// Auto-checkout students left active for > 3 hours or overnight
+app.get('/api/export/book-inventory', async (req, res) => {
+  try {
+    const books = await Book.find().sort({ level: 1, bookNumber: 1, title: 1 });
+    const headers = ['Book ID', 'Title', 'Author', 'Level', 'Book Number', 'Status', 'Current Holder Name', 'Student ID', 'Parent Phone', 'Date Checked Out'];
+    
+    const rows = books.map(b => [
+      `"${b.bookId || ''}"`,
+      `"${(b.title || '').replace(/"/g, '""')}"`,
+      `"${(b.author || '').replace(/"/g, '""')}"`,
+      `"${b.level || ''}"`,
+      `"${b.bookNumber || ''}"`,
+      `"${b.status || 'AVAILABLE'}"`,
+      `"${(b.currentHolderName || '').replace(/"/g, '""')}"`,
+      `"${b.currentHolderId || ''}"`,
+      `"${b.parentPhone || ''}"`,
+      `"${b.checkoutDate || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="kumon_book_inventory_${getDate()}.csv"`);
+    res.status(200).send(csvContent);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to export book inventory.' });
+  }
+});
+
+app.get('/api/export/book-history', async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  try {
+    const query = {};
+    if (startDate && endDate) query.returnDate = { $gte: startDate, $lte: endDate };
+    else if (startDate) query.returnDate = { $gte: startDate };
+    else if (endDate) query.returnDate = { $lte: endDate };
+
+    const logs = await BookLog.find(query).sort({ returnDate: -1, _id: -1 });
+    const headers = ['Date Returned', 'Date Checked Out', 'Days Borrowed', 'Book ID', 'Title', 'Author', 'Level', 'Book Number', 'Student Name', 'Student ID', 'Parent Phone'];
+
+    const rows = logs.map(l => [
+      `"${l.returnDate || ''}"`,
+      `"${l.checkoutDate || ''}"`,
+      l.daysOut || 0,
+      `"${l.bookId || ''}"`,
+      `"${(l.title || '').replace(/"/g, '""')}"`,
+      `"${(l.author || '').replace(/"/g, '""')}"`,
+      `"${l.level || ''}"`,
+      `"${l.bookNumber || ''}"`,
+      `"${(l.studentName || '').replace(/"/g, '""')}"`,
+      `"${l.studentId || ''}"`,
+      `"${l.parentPhone || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const filenameRange = startDate && endDate ? `${startDate}_to_${endDate}` : getDate();
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="book_borrow_history_${filenameRange}.csv"`);
+    res.status(200).send(csvContent);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to export borrow history.' });
+  }
+});
+
+// --- 11. Stale Ghost Session Auto-Cleanup Routine ---
 async function cleanStaleSessions() {
   try {
     const active = await ActiveStudentSession.find();
