@@ -34,7 +34,6 @@
     .btn-success { background: var(--secondary); color: white; border: none; cursor: pointer; }
     .btn-warning { background: var(--warning); color: white; border: none; cursor: pointer; }
 
-    /* Time Status Badges */
     .time-badge {
       display: inline-block;
       padding: 3px 8px;
@@ -56,7 +55,6 @@
       100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
     }
 
-    /* Subject Pill Tags */
     .subj-pill {
       display: inline-block;
       padding: 3px 8px;
@@ -87,7 +85,6 @@
       font-weight: bold;
     }
 
-    /* Screen Preview Styling for Avery Sheets */
     .sheet-page {
       background: white;
       width: 8.5in;
@@ -113,7 +110,6 @@
     .sheet-page .badge-card:nth-of-type(3n) { margin-right: 0; }
     .sheet-page::after { content: ""; display: table; clear: both; }
 
-    /* Ultra-Large Badge Typography (Last Name 20px, First Name 16px) */
     .badge-info { 
       font-size: 11px; 
       line-height: 1.05; 
@@ -150,7 +146,6 @@
       line-height: 1.05;
     }
 
-    /* Book Sticker Formatting */
     .book-badge-info {
       font-size: 11px;
       line-height: 1.1;
@@ -217,7 +212,6 @@
       gap: 0.75rem;
     }
 
-    /* Print Formatting for Avery 5160 / 8160 */
     @media print {
       @page {
         size: 8.5in 11in;
@@ -370,12 +364,11 @@
       </table>
     </div>
 
-    <!-- Student Attendance Log Inspection & Edit Panel -->
     <div id="studentLogsPanel" class="view-card no-print" style="display: none; border-left: 4px solid var(--primary);">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
         <div>
           <h3 style="margin: 0;">Past Attendance Logs</h3>
-          <p style="margin: 3px 0 0 0; color: #666; font-size: 0.85rem;">View, correct check-in/out times, or remove incorrect attendance records.</p>
+          <p style="margin: 3px 0 0 0; color: #666; font-size: 0.85rem;">View, correct check-in/out times, or remove incorrect records.</p>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <input type="text" id="logFilterSearch" placeholder="Filter by name/ID..." oninput="filterStudentLogsLocal()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; width: 170px;" />
@@ -425,7 +418,7 @@
         <div>
           <h2>Student Badges</h2>
           <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
-            Select individual students via checkboxes to print replacement/new badges without reprinting the whole sheet.
+            Select individual students via checkboxes to print replacement badges without reprinting full sheets.
           </p>
         </div>
         <div>
@@ -433,7 +426,6 @@
         </div>
       </div>
 
-      <!-- Batch Print & Sheet Offset Toolbar -->
       <div class="toolbar-box">
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
           <label for="startSlotSelect" style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
@@ -450,7 +442,6 @@
         </div>
       </div>
 
-      <!-- Add Student Form with Collision-Proof Generator -->
       <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
         <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
@@ -478,13 +469,11 @@
 
   <!-- BOOK LIBRARY TAB -->
   <div id="books" class="tab-content">
-    
-    <!-- Check-In / Check-Out Station with Autocomplete -->
     <div class="view-card no-print">
       <h2>Book Check-In / Check-Out Station</h2>
       <p style="margin: 0 0 1rem 0; color: #666; font-size: 0.9rem;">
-        <strong>To Return:</strong> Scan the book barcode alone. It will instantly return the book.<br>
-        <strong>To Borrow:</strong> Type student name or scan their badge, then scan the book barcode.
+        <strong>To Return:</strong> Scan the book barcode alone.<br>
+        <strong>To Borrow:</strong> Type student name or scan badge, then scan book barcode.
       </p>
 
       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
@@ -509,7 +498,6 @@
       <div id="bookScanAlert" style="margin-top: 1rem; font-weight: bold;"></div>
     </div>
 
-    <!-- Currently Checked Out Books Table -->
     <div class="view-card">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
         <div>
@@ -524,9 +512,9 @@
           <button class="btn-action" style="font-size: 12px; background: #2c3e50;" onclick="downloadBookInventoryCSV()">
             ⬇ Export Catalog CSV
           </button>
-          <input type="date" id="bookExportStart" style="font-size: 12px; padding: 0.35rem 0.5rem;" title="Start date for return logs" />
+          <input type="date" id="bookExportStart" style="font-size: 12px; padding: 0.35rem 0.5rem;" />
           <span style="font-size: 12px;">to</span>
-          <input type="date" id="bookExportEnd" style="font-size: 12px; padding: 0.35rem 0.5rem;" title="End date for return logs" />
+          <input type="date" id="bookExportEnd" style="font-size: 12px; padding: 0.35rem 0.5rem;" />
           <button class="btn-action" style="font-size: 12px;" onclick="downloadBookHistoryCSV()">
             ⬇ Export Borrow History CSV
           </button>
@@ -551,7 +539,6 @@
       </table>
     </div>
 
-    <!-- Register New Book with Auto-ID Generator -->
     <div class="view-card no-print">
       <h3>Register New Book</h3>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;">
@@ -571,7 +558,6 @@
       </div>
     </div>
 
-    <!-- Book Stickers Printable Avery Sheet View -->
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
         <h3>Book Label Stickers (Avery 5160 / 8160)</h3>
@@ -598,7 +584,6 @@
 
       <div id="bookBadgeContainer"></div>
     </div>
-
   </div>
 
   <!-- STAFF & PAYROLL TAB -->
@@ -631,7 +616,6 @@
       </table>
     </div>
 
-    <!-- Staff ID Badges Printable View -->
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
         <h3>Staff ID Badges</h3>
@@ -683,7 +667,6 @@
         <tbody></tbody>
       </table>
 
-      <!-- Shift History Inspection & Edit Panel -->
       <div id="shiftDetailPanel" style="display: none; margin-top: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 1rem;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <h3 style="margin: 0;">Shift History: <span id="shiftDetailName" style="color: var(--primary);"></span></h3>
@@ -715,12 +698,11 @@
       <div id="uploadStatus" style="margin-top: 1rem; font-weight: bold;"></div>
     </div>
 
-    <!-- Bulk Book CSV Upload Card -->
     <div class="view-card no-print" style="margin-top: 1.5rem;">
       <h2>Upload Book CSV Inventory</h2>
       <p>Accepted column headers: <code>Title</code>, <code>Author</code>, <code>Level</code>, <code>Number</code> (optional: <code>bookId</code> or <code>Barcode</code>).</p>
       <p style="font-size: 0.85rem; color: #666; margin-top: -0.5rem;">
-        * If <code>bookId</code> is left blank in the CSV, a unique ID (e.g., <code>BK-3A-7H2K-41</code>) will be generated automatically for every title.
+        * If <code>bookId</code> is omitted, a unique ID (e.g., <code>BK-3A-7H2K-41</code>) is generated automatically.
       </p>
       <input type="file" id="bookCsvFileInput" accept=".csv" />
       <button class="btn-action" onclick="uploadBookCSV()">Upload Books to Library</button>
@@ -748,7 +730,6 @@
   let activeShiftEmployeeId = null;
   let activeShiftEmployeeName = '';
 
-  // --- Web Audio Feedback Tone ---
   function playAudioTone(type) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -772,12 +753,9 @@
         osc.start();
         osc.stop(ctx.currentTime + 0.35);
       }
-    } catch (e) {
-      // Audio autoplay restrictions
-    }
+    } catch (e) {}
   }
 
-  // --- Accidental Tab Closure Guard ---
   window.addEventListener('beforeunload', (e) => {
     if (currentActiveStudents.length > 0) {
       e.preventDefault();
@@ -785,7 +763,6 @@
     }
   });
 
-  // --- Hardware Scanner Key Listener ---
   (function initGlobalScanner() {
     let scanBuffer = '';
     let lastCharTime = 0;
@@ -802,9 +779,7 @@
       lastCharTime = now;
 
       if (e.key === 'Enter') {
-        const kioskActive = document.getElementById('kiosk').classList.contains('active');
         const booksActive = document.getElementById('books').classList.contains('active');
-
         const scanInput = document.getElementById('scanInput');
         const bookScanInput = document.getElementById('bookScanInput');
 
@@ -833,11 +808,7 @@
       }
 
       if (e.key.length > 1) return;
-
-      if (interval > SCANNER_MAX_INTERVAL_MS) {
-        scanBuffer = '';
-      }
-
+      if (interval > SCANNER_MAX_INTERVAL_MS) scanBuffer = '';
       scanBuffer += e.key;
     });
   })();
@@ -926,7 +897,6 @@
 
   function printSingleBadge(lastName, firstName, labelSubtitle, qrDataUrl) {
     const printWindow = window.open('', '_blank', 'width=450,height=300');
-    
     const isSubject = labelSubtitle.toLowerCase().includes('math') || labelSubtitle.toLowerCase().includes('read');
     const subtitleHtml = isSubject 
       ? formatSubjectBadge(labelSubtitle) 
@@ -1043,13 +1013,9 @@
         sub.includes(',') || 
         (sub.includes('math') && sub.includes('reading'));
 
-      if (isDual) {
-        countDual++;
-      } else if (sub.includes('read')) {
-        countReading++;
-      } else {
-        countMath++;
-      }
+      if (isDual) countDual++;
+      else if (sub.includes('read')) countReading++;
+      else countMath++;
     });
 
     if (filterSelect) {
@@ -1078,8 +1044,8 @@
       else if (filterVal === 'READING') matchesSubject = !isDual && sub.includes('read');
 
       if (!matchesSubject) return false;
-
       if (!searchQuery) return true;
+
       const idMatch = (s.studentId || '').toLowerCase().includes(searchQuery);
       const firstMatch = (s.firstName || '').toLowerCase().includes(searchQuery);
       const lastMatch = (s.lastName || '').toLowerCase().includes(searchQuery);
@@ -1185,7 +1151,6 @@
     `).join('');
   }
 
-  // --- Student Attendance Logs Management ---
   function toggleStudentLogsPanel(forceState) {
     const panel = document.getElementById('studentLogsPanel');
     if (!panel) return;
@@ -1319,7 +1284,6 @@
     }
   }
 
-  // --- Student Badges & Avery Offset Printing ---
   function populateSlotDropdown() {
     const select = document.getElementById('startSlotSelect');
     if (!select || select.children.length > 0) return;
@@ -1626,11 +1590,17 @@
   }
 
   async function addNewBook() {
-    const title = document.getElementById('newBookTitle').value.trim();
-    const author = document.getElementById('newBookAuthor').value.trim();
-    const level = document.getElementById('newBookLevel').value.trim();
-    const bookNumber = document.getElementById('newBookNumber').value.trim();
-    const bookId = document.getElementById('newBookId').value.trim();
+    const titleInput = document.getElementById('newBookTitle');
+    const authorInput = document.getElementById('newBookAuthor');
+    const levelInput = document.getElementById('newBookLevel');
+    const numberInput = document.getElementById('newBookNumber');
+    const idInput = document.getElementById('newBookId');
+
+    const title = titleInput.value.trim();
+    const author = authorInput.value.trim();
+    const level = levelInput.value.trim();
+    const bookNumber = numberInput.value.trim();
+    let bookId = idInput.value.trim();
 
     if (!title) return alert('Book Title is required.');
 
@@ -1642,16 +1612,22 @@
     const data = await res.json();
 
     if (res.ok) {
-      document.getElementById('newBookTitle').value = '';
-      document.getElementById('newBookAuthor').value = '';
-      document.getElementById('newBookLevel').value = '';
-      document.getElementById('newBookNumber').value = '';
-      document.getElementById('newBookId').value = '';
-      document.getElementById('newBookId').style.backgroundColor = '';
+      playAudioTone('success');
+      titleInput.value = '';
+      authorInput.value = '';
+      numberInput.value = '';
+      idInput.value = '';
+      idInput.style.backgroundColor = '';
+
+      if (levelInput.value) {
+        generateAutoBookId();
+      }
+
       if (data.book?.bookId) selectedBookIds.add(data.book.bookId);
       loadBooks();
     } else {
-      alert(data.message || 'Error saving book.');
+      playAudioTone('error');
+      alert(`Error: ${data.message || 'Failed to save book.'}`);
     }
   }
 
@@ -1964,7 +1940,6 @@
     }
   }
 
-  // --- Staff Badges & Offset Printing ---
   function populateStaffSlotDropdown() {
     const select = document.getElementById('startSlotSelectStaff');
     if (!select || select.children.length > 0) return;
@@ -2066,7 +2041,6 @@
     window.print();
   }
 
-  // --- Staff Management & Payroll Operations ---
   async function loadStaff() {
     refreshActiveStaff();
 

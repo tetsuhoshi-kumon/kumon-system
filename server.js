@@ -22,7 +22,6 @@ const getTime = (date = new Date()) =>
 const getDate = (date = new Date()) =>
   date.toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 
-// Helper to parse custom clock-out strings (e.g., "5:30 PM", "17:30", "5:30")
 function resolveClockOutDate(checkInDate, timeInput) {
   if (!timeInput || !timeInput.trim()) return new Date();
 
@@ -49,16 +48,30 @@ function resolveClockOutDate(checkInDate, timeInput) {
   return target;
 }
 
-// --- MongoDB Atlas Connection ---
+// --- MongoDB Atlas Connection & Legacy Index Sanitization ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tetsuhoshi_db_user:-BMc_UJc5Bz3XkB@tetsuhoshi-kumon.l0lkzen.mongodb.net/kumon?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Successfully connected to MongoDB Atlas!'))
+  .then(async () => {
+    console.log('Successfully connected to MongoDB Atlas!');
+    try {
+      const bookCollection = mongoose.connection.collection('books');
+      const indexes = await bookCollection.indexes();
+      for (const idx of indexes) {
+        if (idx.name !== '_id_' && idx.name !== 'bookId_1') {
+          await bookCollection.dropIndex(idx.name);
+          console.log(`[Auto-Repair] Dropped stale legacy index: ${idx.name}`);
+        }
+      }
+    } catch (idxErr) {
+      // Safe to ignore if collection has no custom indexes yet
+    }
+  })
   .catch(err => console.error('MongoDB connection error:', err));
 
 // --- Schemas & Models ---
 
-// 1. Students & Attendance
+// Student Schemas
 const studentSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -90,7 +103,7 @@ const activeStudentSessionSchema = new mongoose.Schema({
   readyTime: String
 });
 
-// 2. Staff & Payroll
+// Staff Schemas
 const employeeSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -118,9 +131,10 @@ const activeStaffSessionSchema = new mongoose.Schema({
   checkInTime: { type: Date, default: Date.now }
 });
 
-// 3. Book Library
+// Book Library Schemas
 const bookSchema = new mongoose.Schema({
   bookId: { type: String, required: true, unique: true },
+  id: { type: String }, // Mirrors bookId to neutralize legacy index collisions
   title: { type: String, required: true },
   author: { type: String, default: '' },
   level: { type: String, default: 'General' },
@@ -187,14 +201,14 @@ async function generateUniqueBookId(level = 'GEN') {
   return bookId;
 }
 
-// --- 1. Kiosk Scan Endpoint with 30-Second Cooldown ---
+// --- 1. Kiosk Scan Endpoint (30s Double-Scan Safeguard) ---
 app.post('/api/scan', async (req, res) => {
   const { scanId, seatNumber } = req.body;
   const cleanId = String(scanId || '').trim();
   const now = new Date();
 
   try {
-    // Check Staff Clock-In / Clock-Out
+    // A. Staff Scan Branch
     const staffMember = await Employee.findOne({ id: cleanId });
     if (staffMember) {
       const activeSession = await ActiveStaffSession.findOne({ id: staffMember.id });
@@ -257,7 +271,7 @@ app.post('/api/scan', async (req, res) => {
       }
     }
 
-    // Check Student Check-In / Check-Out
+    // B. Student Scan Branch
     const student = await Student.findOne({ id: cleanId });
     if (student) {
       const activeSession = await ActiveStudentSession.findOne({ studentId: student.id });
@@ -751,7 +765,7 @@ app.post('/api/reset-payroll', async (req, res) => {
   res.json({ success: true, message: "Payroll cycle reset successfully." });
 });
 
-// --- 7. Shift & Attendance Log Management ---
+// --- 7. Shift & Attendance Log Audit Endpoints ---
 app.get('/api/staff-shift-logs', async (req, res) => {
   const { employeeId } = req.query;
   try {
@@ -866,7 +880,7 @@ app.delete('/api/student-attendance-logs/:id', async (req, res) => {
   }
 });
 
-// --- 8. Book Library Endpoints ---
+// --- 8. Book Library Operations ---
 app.get('/api/books/generate-id', async (req, res) => {
   const { level } = req.query;
   const bookId = await generateUniqueBookId(level || 'GEN');
@@ -904,16 +918,23 @@ app.post('/api/books', async (req, res) => {
       { bookId },
       {
         bookId,
+        id: bookId, // Mirror to satisfy any stale legacy unique index
         title: String(title).trim(),
         author: String(author || '').trim(),
         level: String(level || 'General').trim(),
         bookNumber: String(bookNumber || '').trim()
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true, runValidators: true }
     );
     res.json({ success: true, message: `Saved "${book.title}" (${book.bookId})!`, book });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to save book.' });
+    console.error('Save Book Error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: err.code === 11000 
+        ? `Duplicate ID "${bookId}". Please generate a fresh identifier.` 
+        : (err.message || 'Failed to save book.') 
+    });
   }
 });
 
@@ -937,7 +958,7 @@ app.post('/api/books/scan', async (req, res) => {
       return res.status(404).json({ success: false, message: `Book barcode "${cleanBookId}" not registered.` });
     }
 
-    // Return logic
+    // Return flow
     if (book.status === 'CHECKED_OUT') {
       const checkoutTime = book.checkoutTime ? new Date(book.checkoutTime) : new Date();
       const daysOut = Math.max(1, Math.round((new Date() - checkoutTime) / (1000 * 60 * 60 * 24)));
@@ -973,7 +994,7 @@ app.post('/api/books/scan', async (req, res) => {
       });
     }
 
-    // Checkout logic
+    // Checkout flow
     if (!cleanStudentId) {
       return res.status(200).json({
         success: false,
@@ -1083,6 +1104,7 @@ app.post('/api/upload-books', upload.single('file'), (req, res) => {
               update: {
                 $set: {
                   bookId: finalId,
+                  id: finalId,
                   title: item.title,
                   author: item.author,
                   level: item.level,
@@ -1241,7 +1263,7 @@ app.get('/api/export/book-history', async (req, res) => {
   }
 });
 
-// --- 11. Stale Ghost Session Auto-Cleanup Routine ---
+// --- 11. Stale Ghost Session Cleanup ---
 async function cleanStaleSessions() {
   try {
     const active = await ActiveStudentSession.find();
