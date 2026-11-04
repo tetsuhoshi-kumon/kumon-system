@@ -1313,25 +1313,3 @@ setInterval(cleanStaleSessions, 15 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));
-```
-
----
-
-### Step 3: Deploy to Render
-
-Commit both updated files and push to Render:
-
-```bash
-cd /Users/spike/kumon-system
-git add server.js public/index.html
-git commit -m "Add high-visibility scan toast, live color progress bars, book title autocomplete, and student reading history modal"
-git push origin main
-```
-
-<FollowUp label="Want to test the new reading history modal and book title search on your live site?" query="How do I verify the student reading history modal and book title search on the live site?"/>
-
-<ElicitationsGroup message="Next optimizations to consider:">
-  <Elicitation label="Add total reading count badge" query="Add a small badge next to student names indicating how many total books they have finished this year."/>
-  <Elicitation label="Export individual student reading log" query="Add a button inside the reading history modal to print or download a reading certificate/log for parents."/>
-  <Elicitation label="Add classroom capacity badge to header" query="Display a live student count (Math vs. Reading) directly inside the header navigation bar."/>
-</ElicitationsGroup>
