@@ -70,8 +70,6 @@ mongoose.connect(MONGO_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 // --- Schemas & Models ---
-
-// Student Schemas
 const studentSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -103,7 +101,6 @@ const activeStudentSessionSchema = new mongoose.Schema({
   readyTime: String
 });
 
-// Staff Schemas
 const employeeSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -131,10 +128,9 @@ const activeStaffSessionSchema = new mongoose.Schema({
   checkInTime: { type: Date, default: Date.now }
 });
 
-// Book Library Schemas
 const bookSchema = new mongoose.Schema({
   bookId: { type: String, required: true, unique: true },
-  id: { type: String }, // Mirrors bookId to neutralize legacy index collisions
+  id: { type: String },
   title: { type: String, required: true },
   author: { type: String, default: '' },
   level: { type: String, default: 'General' },
@@ -173,7 +169,6 @@ const Book = mongoose.model('Book', bookSchema);
 const BookLog = mongoose.model('BookLog', bookLogSchema);
 
 // --- Collision-Proof ID Generators ---
-
 async function generateUniqueTempId() {
   let unique = false;
   let tempId = '';
@@ -201,14 +196,13 @@ async function generateUniqueBookId(level = 'GEN') {
   return bookId;
 }
 
-// --- 1. Kiosk Scan Endpoint (30s Double-Scan Safeguard) ---
+// --- 1. Kiosk Scan Endpoint ---
 app.post('/api/scan', async (req, res) => {
   const { scanId, seatNumber } = req.body;
   const cleanId = String(scanId || '').trim();
   const now = new Date();
 
   try {
-    // A. Staff Scan Branch
     const staffMember = await Employee.findOne({ id: cleanId });
     if (staffMember) {
       const activeSession = await ActiveStaffSession.findOne({ id: staffMember.id });
@@ -271,7 +265,6 @@ app.post('/api/scan', async (req, res) => {
       }
     }
 
-    // B. Student Scan Branch
     const student = await Student.findOne({ id: cleanId });
     if (student) {
       const activeSession = await ActiveStudentSession.findOne({ studentId: student.id });
@@ -332,13 +325,13 @@ app.post('/api/scan', async (req, res) => {
           lastName: student.lastName,
           subject: student.subject,
           seatNumber: session.seatNumber,
-          message: `${student.firstName} ${student.lastName} checked in at ${session.seatNumber}.`,
+          message: `${student.firstName} ${student.lastName} checked in!`,
           session
         });
       }
     }
 
-    return res.status(404).json({ success: false, message: "Scanned ID not recognized as Student or Staff." });
+    return res.status(404).json({ success: false, message: `Scanned ID "${cleanId}" not recognized as Student or Staff.` });
   } catch (err) {
     console.error("Scan Error:", err);
     res.status(500).json({ success: false, message: err.message || "Database transaction error." });
@@ -602,6 +595,20 @@ app.get('/api/students-qr', async (req, res) => {
     qrCode: await QRCode.toDataURL(String(s.id))
   })));
   res.json(list);
+});
+
+// Student Reading History
+app.get('/api/students/:id/book-history', async (req, res) => {
+  const studentId = String(req.params.id || '').trim();
+  try {
+    const [currentlyOut, pastLogs] = await Promise.all([
+      Book.find({ currentHolderId: studentId }).sort({ checkoutDate: -1 }),
+      BookLog.find({ studentId }).sort({ returnDate: -1, _id: -1 }).limit(30)
+    ]);
+    res.json({ currentlyOut, pastLogs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch student reading history.' });
+  }
 });
 
 // --- 5. Staff Management ---
@@ -889,7 +896,10 @@ app.get('/api/books/generate-id', async (req, res) => {
 
 app.get('/api/books-qr', async (req, res) => {
   try {
-    const books = await Book.find().sort({ level: 1, bookNumber: 1, title: 1 });
+    const books = await Book.find()
+      .collation({ locale: 'en', numericOrdering: true })
+      .sort({ level: 1, bookNumber: 1, title: 1 });
+
     const list = await Promise.all(books.map(async b => ({
       ...b.toObject(),
       qrCode: await QRCode.toDataURL(String(b.bookId))
@@ -918,7 +928,7 @@ app.post('/api/books', async (req, res) => {
       { bookId },
       {
         bookId,
-        id: bookId, // Mirror to satisfy any stale legacy unique index
+        id: bookId,
         title: String(title).trim(),
         author: String(author || '').trim(),
         level: String(level || 'General').trim(),
@@ -958,7 +968,6 @@ app.post('/api/books/scan', async (req, res) => {
       return res.status(404).json({ success: false, message: `Book barcode "${cleanBookId}" not registered.` });
     }
 
-    // Return flow
     if (book.status === 'CHECKED_OUT') {
       const checkoutTime = book.checkoutTime ? new Date(book.checkoutTime) : new Date();
       const daysOut = Math.max(1, Math.round((new Date() - checkoutTime) / (1000 * 60 * 60 * 24)));
@@ -994,7 +1003,6 @@ app.post('/api/books/scan', async (req, res) => {
       });
     }
 
-    // Checkout flow
     if (!cleanStudentId) {
       return res.status(200).json({
         success: false,
@@ -1201,7 +1209,10 @@ app.get('/api/export/staff-logs', async (req, res) => {
 
 app.get('/api/export/book-inventory', async (req, res) => {
   try {
-    const books = await Book.find().sort({ level: 1, bookNumber: 1, title: 1 });
+    const books = await Book.find()
+      .collation({ locale: 'en', numericOrdering: true })
+      .sort({ level: 1, bookNumber: 1, title: 1 });
+
     const headers = ['Book ID', 'Title', 'Author', 'Level', 'Book Number', 'Status', 'Current Holder Name', 'Student ID', 'Parent Phone', 'Date Checked Out'];
     
     const rows = books.map(b => [
@@ -1263,7 +1274,7 @@ app.get('/api/export/book-history', async (req, res) => {
   }
 });
 
-// --- 11. Stale Ghost Session Cleanup ---
+// --- 11. Stale Ghost Session Auto-Cleanup ---
 async function cleanStaleSessions() {
   try {
     const active = await ActiveStudentSession.find();
@@ -1302,3 +1313,25 @@ setInterval(cleanStaleSessions, 15 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));
+```
+
+---
+
+### Step 3: Deploy to Render
+
+Commit both updated files and push to Render:
+
+```bash
+cd /Users/spike/kumon-system
+git add server.js public/index.html
+git commit -m "Add high-visibility scan toast, live color progress bars, book title autocomplete, and student reading history modal"
+git push origin main
+```
+
+<FollowUp label="Want to test the new reading history modal and book title search on your live site?" query="How do I verify the student reading history modal and book title search on the live site?"/>
+
+<ElicitationsGroup message="Next optimizations to consider:">
+  <Elicitation label="Add total reading count badge" query="Add a small badge next to student names indicating how many total books they have finished this year."/>
+  <Elicitation label="Export individual student reading log" query="Add a button inside the reading history modal to print or download a reading certificate/log for parents."/>
+  <Elicitation label="Add classroom capacity badge to header" query="Display a live student count (Math vs. Reading) directly inside the header navigation bar."/>
+</ElicitationsGroup>
