@@ -296,9 +296,57 @@
         height: 0.78in !important;
       }
     }
-  </style>
+  
+    /* Toast Banner */
+    #scanToast {
+      position: fixed; top: -120px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; min-width: 380px; max-width: 90vw; padding: 1rem 1.5rem;
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); color: white;
+      font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 1rem;
+      transition: top 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none;
+    }
+    #scanToast.toast-show { top: 20px; }
+    #scanToast.toast-success { background: linear-gradient(135deg, #27ae60, #2ecc71); border-left: 6px solid #1e8449; }
+    #scanToast.toast-error { background: linear-gradient(135deg, #c0392b, #e74c3c); border-left: 6px solid #922b21; }
+
+    /* Progress Bar */
+    .progress-bar-container { width: 140px; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+    .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+    .fill-blue { background: #3498db; }
+    .fill-amber { background: #f39c12; }
+    .fill-red { background: #e74c3c; }
+
+    /* Modal & Links */
+    .student-link { color: #2980b9; text-decoration: underline; cursor: pointer; font-weight: 700; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 10000; }
+    .modal-card { background: white; border-radius: 8px; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+
+</style>
 </head>
 <body>
+
+<!-- Scan Notification Toast Banner -->
+<div id="scanToast">
+  <span id="toastIcon" style="font-size: 1.5rem;"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- Student Reading History Modal -->
+<div id="readingHistoryModal" class="modal-overlay" onclick="closeReadingHistoryModal(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 0.75rem;">
+      <h3 style="margin: 0;" id="modalStudentName">Student Reading History</h3>
+      <button class="btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="closeReadingHistoryModal()">✕ Close</button>
+    </div>
+    <div style="margin-top: 1rem;">
+      <h4 style="margin: 0 0 0.5rem 0; color: #2980b9;">Currently Checked Out</h4>
+      <div id="modalCurrentBooks" style="font-size: 0.9rem; color: #555; margin-bottom: 1.25rem;">None</div>
+      <h4 style="margin: 0 0 0.5rem 0; color: #27ae60;">Past Returned Books</h4>
+      <div id="modalPastBooks" style="font-size: 0.9rem;"></div>
+    </div>
+  </div>
+</div>
+
 
 <header class="no-print">
   <h1>Kumon Center Kiosk</h1>
