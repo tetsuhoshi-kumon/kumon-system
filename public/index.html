@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.19)</title>
+  <title>Kumon Center Management System (v1.21)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -408,7 +408,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.19</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.21</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -2854,7 +2854,7 @@
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.19)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.21)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2949,7 +2949,7 @@
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.19)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.21)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3017,7 +3017,7 @@
 
 
   // ==========================================
-  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.19)
+  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.21)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3140,7 +3140,7 @@
   injectRegisterBookCenterSelect();
 
   // ==========================================
-  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.19)
+  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.21)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3269,7 +3269,7 @@
 
 
   // ==========================================
-  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.19)
+  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.21)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3377,7 +3377,7 @@
 
 
   // ==========================================
-  // SOLID SYNCHRONOUS CENTER FILTER (v1.19)
+  // SOLID SYNCHRONOUS CENTER FILTER (v1.21)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     const filterEl = document.getElementById('bookCenterFilter');
@@ -3479,7 +3479,7 @@
 
 
   // ==========================================
-  // BULLETPROOF CSS-NATIVE FILTER (v1.19)
+  // BULLETPROOF CSS-NATIVE FILTER (v1.21)
   // ==========================================
   (function() {
     // 1. Inject Global CSS Rules to hide rows/stickers natively
@@ -3602,7 +3602,7 @@
 
 
   // ==========================================
-  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.19)
+  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.21)
   // ==========================================
   if (!window._v117FetchBound) {
     window._v117FetchBound = true;
@@ -3634,7 +3634,7 @@
 
 
   // ==========================================
-  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.19)
+  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.21)
   // ==========================================
   window.onBookCenterFilterChange = function() {
     if (typeof loadBooks === 'function') loadBooks();
@@ -3676,19 +3676,86 @@
   }
 
   // Pure DOM Decoration (Adding Pills and Checkboxes to whatever was rendered)
+  // Bind dropdown correctly
+  setTimeout(() => {
+    const dropdown = document.getElementById('bookCenterFilter');
+    if (dropdown) {
+      dropdown.removeAttribute('onchange');
+      dropdown.addEventListener('change', window.onBookCenterFilterChange);
+    }
+  }, 500);
+
+
+  // ==========================================
+  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.21)
+  // ==========================================
+  window.getActiveCenterValue = function() {
+    // 1. Locate the dropdown that has our center names (bypassing ID typos)
+    const selects = Array.from(document.querySelectorAll('select'));
+    const filterSelect = selects.find(sel => 
+      sel.textContent.toLowerCase().includes('camarillo') && 
+      sel.textContent.toLowerCase().includes('thousand') &&
+      (!sel.id || !sel.id.toLowerCase().includes('register'))
+    );
+
+    if (filterSelect && filterSelect.selectedIndex >= 0) {
+      const opt = filterSelect.options[filterSelect.selectedIndex];
+      const text = (opt.textContent || '').toLowerCase();
+      const val = (filterSelect.value || '').toLowerCase();
+      
+      // 2. Read the visible TEXT of the dropdown option, completely ignoring broken value="" attributes!
+      if (text.includes('camarillo') || val === 'camarillo') return 'Camarillo';
+      if (text.includes('thousand') || val.includes('thousand')) return 'Thousand Oaks';
+      if (text.includes('unassigned') || val === 'unassigned') return 'Unassigned';
+    }
+    
+    return 'all';
+  };
+
+  window.onBookCenterFilterChange = function() {
+    if (typeof loadBooks === 'function') loadBooks();
+  };
+
+  if (!window._v121FetchHook) {
+    window._v121FetchHook = true;
+    const origFetch = window.fetch;
+    window.fetch = function() {
+      let args = Array.prototype.slice.call(arguments);
+      let url = args[0];
+      if (typeof url === 'string' && url.includes('/api/books-qr')) {
+        const centerVal = window.getActiveCenterValue();
+        url = url.split('?')[0] + '?center=' + encodeURIComponent(centerVal);
+        args[0] = url;
+        console.log('v1.21 Intercepted fetch! Requesting:', url);
+      }
+      return origFetch.apply(this, args).then(res => {
+        if (typeof url === 'string' && url.includes('/api/books-qr')) {
+          const clone = res.clone();
+          clone.json().then(data => {
+            if (Array.isArray(data)) {
+              window.allBooksList = data;
+              setTimeout(() => {
+                if (typeof decorateBookDOM === 'function') decorateBookDOM();
+              }, 200);
+            }
+          }).catch(err => console.error(err));
+        }
+        return res;
+      });
+    };
+  }
+
   window.decorateBookDOM = function() {
-    const activeCenter = document.getElementById('bookCenterFilter') ? document.getElementById('bookCenterFilter').value : 'all';
+    const activeCenter = window.getActiveCenterValue();
     const activeData = window.allBooksList || [];
     let count = activeData.length;
     
-    // Add Checkboxes and Pills to Table
     document.querySelectorAll('#books table tbody tr').forEach(row => {
       const codeEl = row.querySelector('code');
       const bId = codeEl ? codeEl.textContent.trim() : '';
       const bookObj = activeData.find(b => String(b.bookId).trim() === bId);
       const rowCenter = bookObj && bookObj.center ? bookObj.center : 'Thousand Oaks';
 
-      // Checkbox
       if (bId && !row.querySelector('.book-row-cb')) {
         const td = document.createElement('td');
         td.style.textAlign = 'center';
@@ -3699,7 +3766,6 @@
         td.appendChild(cb);
         row.insertBefore(td, row.firstChild);
       }
-      // Pill
       let pill = row.querySelector('.row-center-pill');
       if (!pill && codeEl && codeEl.parentNode) {
         pill = document.createElement('span');
@@ -3712,7 +3778,6 @@
       }
     });
 
-    // Table Header Master Checkbox
     const headRow = document.querySelector('#books table thead tr');
     if (headRow && !headRow.querySelector('.book-head-cb')) {
       const th = document.createElement('th');
@@ -3732,7 +3797,6 @@
       headRow.insertBefore(th, headRow.firstChild);
     }
 
-    // Stickers Pills
     document.querySelectorAll('#books .avery-label, #books .book-sticker-card, #books .qr-card').forEach(card => {
       const subEl = card.querySelector('.book-id-sub, code');
       let bId = card.getAttribute('data-book-id') || (subEl ? subEl.textContent.trim().split(/\s+/)[0] : '');
@@ -3747,20 +3811,23 @@
       }
     });
 
-    // Update Status
     const statusEl = document.getElementById('bookCenterStatus');
     if (statusEl) {
-      const label = activeCenter === 'all' ? 'All Centers' : (activeCenter.toLowerCase() === 'camarillo' ? 'Camarillo' : 'Thousand Oaks');
+      const label = activeCenter === 'all' ? 'All Centers' : activeCenter;
       statusEl.textContent = 'Showing ' + count + ' ' + label + ' book(s) & stickers';
     }
   };
 
-  // Bind dropdown correctly
   setTimeout(() => {
-    const dropdown = document.getElementById('bookCenterFilter');
-    if (dropdown) {
-      dropdown.removeAttribute('onchange');
-      dropdown.addEventListener('change', window.onBookCenterFilterChange);
+    const selects = Array.from(document.querySelectorAll('select'));
+    const filterSelect = selects.find(sel => 
+      sel.textContent.toLowerCase().includes('camarillo') && 
+      sel.textContent.toLowerCase().includes('thousand') &&
+      (!sel.id || !sel.id.toLowerCase().includes('register'))
+    );
+    if (filterSelect) {
+      filterSelect.removeAttribute('onchange');
+      filterSelect.addEventListener('change', window.onBookCenterFilterChange);
     }
   }, 500);
 
