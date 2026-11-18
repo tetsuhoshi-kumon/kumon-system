@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System</title>
+  <title>Kumon Center Management System (v1.00)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -388,6 +388,7 @@
     <button onclick="switchTab('badges')">Student Badges</button>
     <button onclick="switchTab('books')">Book Library</button>
     <button onclick="switchTab('staff')">Staff &amp; Payroll</button>
+    <button onclick="switchTab('analytics')">Analytics &amp; Payroll</button>
     <button onclick="switchTab('import')">Import Roster</button>
   </nav>
 </header>
@@ -577,6 +578,17 @@
           autofocus 
         />
         <datalist id="bookTitleDatalist"></datalist>
+
+      <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
+        <label for="bookCenterFilter" style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
+        <select id="bookCenterFilter" onchange="onBookCenterFilterChange()" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
+          <option value="all">All Centers (Camarillo &amp; Thousand Oaks)</option>
+          <option value="Camarillo">Camarillo Only</option>
+          <option value="Thousand Oaks">Thousand Oaks Only</option>
+        </select>
+        <span id="bookCenterStatus" style="font-size: 0.85rem; color: #666; margin-left: auto;">Showing all books &amp; stickers</span>
+      </div>
+
 
         <input 
           type="text" 
@@ -796,6 +808,7 @@
 
     <div class="view-card no-print" style="margin-top: 1.5rem;">
       <h2>Upload Book CSV Inventory</h2>
+      <div style="margin-bottom: 8px;"><label style="font-weight:bold; margin-right:6px;">Target Center for CSV Books:</label><select id="bookCsvCenter" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"><option value="Camarillo">Camarillo</option><option value="Thousand Oaks" selected>Thousand Oaks</option></select></div>
       <p>Accepted column headers: <code>Title</code>, <code>Author</code>, <code>Level</code>, <code>Number</code> (optional: <code>bookId</code> or <code>Barcode</code>).</p>
       <p style="font-size: 0.85rem; color: #666; margin-top: -0.5rem;">
         * If <code>bookId</code> is omitted, a unique ID (e.g., <code>BK-3A-7H2K-41</code>) is generated automatically.
@@ -803,6 +816,76 @@
       <input type="file" id="bookCsvFileInput" accept=".csv" />
       <button class="btn-action" onclick="uploadBookCSV()">Upload Books to Library</button>
       <div id="bookUploadStatus" style="margin-top: 1rem; font-weight: bold;"></div>
+    </div>
+  </div>
+
+
+
+  <!-- ANALYTICS & PAYROLL TAB -->
+  <div id="analytics" class="tab-content">
+    <div class="view-card no-print">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>Staff Payroll Export (By Pay Period)</h2>
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+            Export aggregated staff shifts, total hours, and estimated gross pay to CSV.
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn-action" style="font-size: 12px; background: #34495e;" onclick="setPayPeriod('firstHalf')">1st – 15th</button>
+          <button class="btn-action" style="font-size: 12px; background: #34495e;" onclick="setPayPeriod('secondHalf')">16th – End of Month</button>
+        </div>
+      </div>
+
+      <div class="toolbar-box" style="margin-top: 1rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+          <label style="font-weight: bold; font-size: 0.9rem;">Pay Period:</label>
+          <input type="date" id="payrollStart" />
+          <span>to</span>
+          <input type="date" id="payrollEnd" />
+          <label style="font-weight: bold; font-size: 0.9rem; margin-left: 0.5rem;">Default Rate ($/hr):</label>
+          <input type="number" id="payrollRate" value="16.50" step="0.50" style="width: 90px;" />
+          <button class="btn-success" style="font-weight: bold;" onclick="exportPayrollCSV()">⬇ Download Payroll CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>Center Peak-Hour Traffic Analytics</h2>
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+            Compare student attendance volume against staff coverage by hour.
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <label style="font-size: 0.9rem; font-weight: bold;">Lookback:</label>
+          <select id="analyticsDays" onchange="loadTrafficAnalytics()" style="font-size: 0.85rem; padding: 0.4rem;">
+            <option value="7">Last 7 Days</option>
+            <option value="14" selected>Last 14 Days</option>
+            <option value="30">Last 30 Days</option>
+          </select>
+          <button class="btn-action" style="font-size: 12px; padding: 0.4rem 0.8rem;" onclick="loadTrafficAnalytics()">Refresh</button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+        <div style="background: #ebf5fb; border-left: 4px solid #2980b9; padding: 1rem; border-radius: 6px;">
+          <div style="font-size: 0.85rem; color: #1d6fa5; font-weight: bold;">Total Student Visits</div>
+          <div id="kpiVisits" style="font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 4px;">--</div>
+        </div>
+        <div style="background: #e8f8f0; border-left: 4px solid #27ae60; padding: 1rem; border-radius: 6px;">
+          <div style="font-size: 0.85rem; color: #1e8449; font-weight: bold;">Avg Student Stay</div>
+          <div id="kpiDuration" style="font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 4px;">-- mins</div>
+        </div>
+        <div style="background: #fef5e7; border-left: 4px solid #e67e22; padding: 1rem; border-radius: 6px;">
+          <div style="font-size: 0.85rem; color: #d35400; font-weight: bold;">Total Staff Shifts</div>
+          <div id="kpiShifts" style="font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 4px;">--</div>
+        </div>
+      </div>
+
+      <h3 style="margin: 1.5rem 0 0.5rem 0;">Hourly Traffic Distribution</h3>
+      <div id="trafficChart" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;"></div>
     </div>
   </div>
 
@@ -1795,7 +1878,8 @@
     }
     populateBookSlotDropdown();
     try {
-      const res = await fetch('/api/books-qr');
+      const cFilter = document.getElementById('bookCenterFilter') ? document.getElementById('bookCenterFilter').value : 'all';
+      const res = await fetch('/api/books-qr?center=' + encodeURIComponent(cFilter));
       const rawBooks = await res.json();
       allBooksList = sortBooksNaturally(rawBooks);
       refreshBookTitleDatalist();
@@ -1870,7 +1954,7 @@
     const res = await fetch('/api/books', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookId, title, author, level, bookNumber })
+      body: JSON.stringify({ bookId, title, author, level, bookNumber, center: document.getElementById('bookCenterSelect') ? document.getElementById('bookCenterSelect').value : 'Thousand Oaks' })
     });
     const data = await res.json();
 
@@ -2083,7 +2167,7 @@
             </div>
             <div class="book-title-line">${b.title}</div>
             <div class="book-author-line">${b.author ? 'By ' + b.author : ''}</div>
-            <div class="book-id-sub">${b.bookId}</div>
+            <div class="book-id-sub">${b.bookId} • <strong>${b.center === 'Camarillo' ? 'CAM' : 'TO'}</strong></div>
           </div>
           <img class="badge-qr" src="${b.qrCode}" alt="Book QR" />
         </div>
@@ -2199,6 +2283,8 @@
     status.textContent = 'Uploading and generating barcodes...';
 
     try {
+      const bCenterEl = document.getElementById('bookCsvCenter');
+      if (bCenterEl) formData.append('center', bCenterEl.value);
       const res = await fetch('/api/upload-books', { method: 'POST', body: formData });
       const data = await res.json();
 
@@ -2593,6 +2679,8 @@
     const status = document.getElementById('uploadStatus');
     status.textContent = 'Uploading and processing roster...';
 
+    const rCenterEl = document.getElementById('rosterCsvCenter');
+    if (rCenterEl) formData.append('center', rCenterEl.value);
     const res = await fetch('/api/upload-roster', { method: 'POST', body: formData });
     const data = await res.json();
     status.textContent = data.message;
@@ -2610,6 +2698,115 @@
   }, 30000);
 
   refreshActive();
+
+  // ==========================================
+  // STARTUP PRELOAD, CENTER FILTER & ANALYTICS
+  // ==========================================
+  async function preloadKioskEntities() {
+    try {
+      const [sRes, stRes] = await Promise.all([
+        fetch('/api/students-qr'),
+        fetch('/api/employees-qr')
+      ]);
+      if (sRes.ok) allStudents = await sRes.json();
+      if (stRes.ok && typeof allStaff !== 'undefined') allStaff = await stRes.json();
+      if (typeof refreshGlobalDatalist === 'function') refreshGlobalDatalist();
+    } catch (err) {
+      console.error('Startup entity preload failed:', err);
+    }
+  }
+  preloadKioskEntities();
+
+  function onBookCenterFilterChange() {
+    const val = document.getElementById('bookCenterFilter') ? document.getElementById('bookCenterFilter').value : 'all';
+    const statusEl = document.getElementById('bookCenterStatus');
+    if (statusEl) {
+      statusEl.textContent = val === 'all' ? 'Showing all books & stickers' : `Showing ${val} books & stickers`;
+    }
+    if (typeof loadBooks === 'function') loadBooks();
+  }
+
+  function setPayPeriod(type) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = n => String(n).padStart(2, '0');
+
+    if (type === 'firstHalf') {
+      document.getElementById('payrollStart').value = `${y}-${pad(m + 1)}-01`;
+      document.getElementById('payrollEnd').value = `${y}-${pad(m + 1)}-15`;
+    } else if (type === 'secondHalf') {
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      document.getElementById('payrollStart').value = `${y}-${pad(m + 1)}-16`;
+      document.getElementById('payrollEnd').value = `${y}-${pad(m + 1)}-${lastDay}`;
+    }
+  }
+
+  function exportPayrollCSV() {
+    const start = document.getElementById('payrollStart').value;
+    const end = document.getElementById('payrollEnd').value;
+    const rate = document.getElementById('payrollRate').value || 16.50;
+    if (!start || !end) {
+      alert('Please select both a start and end date.');
+      return;
+    }
+    window.location.href = `/api/staff-payroll/export?start=${start}&end=${end}&defaultRate=${rate}`;
+  }
+
+  async function loadTrafficAnalytics() {
+    const days = document.getElementById('analyticsDays') ? document.getElementById('analyticsDays').value : 14;
+    try {
+      const res = await fetch(`/api/analytics/traffic?days=${days}`);
+      const data = await res.json();
+
+      document.getElementById('kpiVisits').textContent = data.totalStudentVisits;
+      document.getElementById('kpiDuration').textContent = data.avgStudentMinutes + ' mins';
+      document.getElementById('kpiShifts').textContent = data.totalStaffShifts;
+
+      const chart = document.getElementById('trafficChart');
+      chart.innerHTML = '';
+      const maxVal = Math.max(...data.trafficByHour.map(b => Math.max(b.students, b.staff)), 1);
+
+      data.trafficByHour.forEach(bucket => {
+        const sPct = Math.round((bucket.students / maxVal) * 100);
+        const stPct = Math.round((bucket.staff / maxVal) * 100);
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; align-items: center; gap: 1rem; font-size: 0.9rem;';
+        row.innerHTML = `
+          <div style="width: 80px; font-weight: bold; color: #2c3e50;">${bucket.hourLabel}</div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: ${sPct}%; height: 16px; background: #2980b9; border-radius: 3px; min-width: ${bucket.students > 0 ? '8px' : '0'};"></div>
+              <span style="font-size: 11px; font-weight: bold; color: #2980b9;">${bucket.students} students</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: ${stPct}%; height: 16px; background: #27ae60; border-radius: 3px; min-width: ${bucket.staff > 0 ? '8px' : '0'};"></div>
+              <span style="font-size: 11px; font-weight: bold; color: #27ae60;">${bucket.staff} staff</span>
+            </div>
+          </div>
+        `;
+        chart.appendChild(row);
+      });
+    } catch (err) {
+      console.error('Analytics load error:', err);
+    }
+  }
+
+  if (typeof switchTab === 'function') {
+    const _baseSwitchTab = switchTab;
+    switchTab = function(tabId) {
+      _baseSwitchTab(tabId);
+      if (tabId === 'analytics') {
+        setPayPeriod('firstHalf');
+        loadTrafficAnalytics();
+      }
+      if (tabId === 'kiosk' && (!allStudents || !allStudents.length)) {
+        preloadKioskEntities();
+      }
+    };
+  }
+
 </script>
 </body>
 </html>

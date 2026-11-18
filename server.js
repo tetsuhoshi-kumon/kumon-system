@@ -75,7 +75,8 @@ const studentSchema = new mongoose.Schema({
   firstName: String,
   lastName: String,
   subject: { type: String, default: 'Math' },
-  parentPhone: String
+  parentPhone: String,
+  center: { type: String, default: 'Thousand Oaks' }
 });
 
 const studentAttendanceLogSchema = new mongoose.Schema({
@@ -140,7 +141,8 @@ const bookSchema = new mongoose.Schema({
   currentHolderName: { type: String, default: null },
   parentPhone: { type: String, default: '' },
   checkoutDate: { type: String, default: null },
-  checkoutTime: { type: Date, default: null }
+  checkoutTime: { type: Date, default: null },
+  center: { type: String, default: 'Thousand Oaks' }
 });
 
 const bookLogSchema = new mongoose.Schema({
@@ -896,7 +898,8 @@ app.get('/api/books/generate-id', async (req, res) => {
 
 app.get('/api/books-qr', async (req, res) => {
   try {
-    const books = await Book.find()
+    const filter = (req.query.center && req.query.center !== 'all') ? { center: req.query.center } : {};
+    const books = await Book.find(filter)
       .collation({ locale: 'en', numericOrdering: true })
       .sort({ level: 1, bookNumber: 1, title: 1 });
 
@@ -911,7 +914,7 @@ app.get('/api/books-qr', async (req, res) => {
 });
 
 app.post('/api/books', async (req, res) => {
-  let { bookId, title, author, level, bookNumber } = req.body;
+  let { bookId, title, author, level, bookNumber, center } = req.body;
 
   if (!title || !title.trim()) {
     return res.status(400).json({ success: false, message: 'Book title is required.' });
@@ -932,7 +935,8 @@ app.post('/api/books', async (req, res) => {
         title: String(title).trim(),
         author: String(author || '').trim(),
         level: String(level || 'General').trim(),
-        bookNumber: String(bookNumber || '').trim()
+        bookNumber: String(bookNumber || '').trim(),
+        center: String(center || 'Thousand Oaks').trim()
       },
       { upsert: true, new: true, runValidators: true }
     );
@@ -1038,6 +1042,7 @@ app.post('/api/books/scan', async (req, res) => {
 // --- 9. CSV Uploads ---
 app.post('/api/upload-roster', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+  const uploadCenter = req.body.center || 'Thousand Oaks';
 
   const results = [];
   fs.createReadStream(req.file.path)
@@ -1055,7 +1060,8 @@ app.post('/api/upload-roster', upload.single('file'), (req, res) => {
           firstName: String(firstName).trim(),
           lastName: String(lastName).trim(),
           subject: String(subject).trim(),
-          parentPhone: String(parentPhone).trim()
+          parentPhone: String(parentPhone).trim(),
+          center: String(row.center || row.Center || uploadCenter).trim()
         });
       }
     })
@@ -1075,6 +1081,7 @@ app.post('/api/upload-roster', upload.single('file'), (req, res) => {
 
 app.post('/api/upload-books', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+  const bookUploadCenter = req.body.center || 'Thousand Oaks';
 
   const results = [];
   fs.createReadStream(req.file.path)
@@ -1092,7 +1099,8 @@ app.post('/api/upload-books', upload.single('file'), (req, res) => {
           author: String(author).trim(),
           level: String(level).trim(),
           bookNumber: String(bookNumber).trim(),
-          bookId: bookId ? String(bookId).trim() : null
+          bookId: bookId ? String(bookId).trim() : null,
+          center: String(row.center || row.Center || bookUploadCenter).trim()
         });
       }
     })
@@ -1312,4 +1320,132 @@ async function cleanStaleSessions() {
 setInterval(cleanStaleSessions, 15 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
+// ==========================================
+// PAYROLL EXPORT & CENTER TRAFFIC ANALYTICS
+// ==========================================
+
+app.get('/api/staff-payroll/export', async (req, res) => {
+  try {
+    const { start, end, defaultRate = 16.50 } = req.query;
+    if (!start || !end) {
+      return res.status(400).send('start and end date parameters required');
+    }
+
+    const logs = await StaffShiftLog.find({
+      date: { $gte: start, $lte: end }
+    }).lean();
+
+    const employees = await Employee.find({}).lean();
+    const empMap = {};
+    employees.forEach(e => {
+      empMap[e.id] = {
+        name: `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.id,
+        role: e.role || 'Assistant',
+        rate: parseFloat(e.hourlyRate) || parseFloat(defaultRate)
+      };
+    });
+
+    const payroll = {};
+    logs.forEach(log => {
+      const empId = log.id;
+      if (!payroll[empId]) {
+        const info = empMap[empId] || {
+          name: `${log.firstName || ''} ${log.lastName || ''}`.trim() || empId,
+          role: log.role || 'Assistant',
+          rate: parseFloat(defaultRate)
+        };
+        payroll[empId] = {
+          id: empId,
+          name: info.name,
+          role: info.role,
+          hourlyRate: info.rate,
+          totalMinutes: 0,
+          shiftCount: 0
+        };
+      }
+      const mins = Number(log.durationMinutes) || (Number(log.hoursWorked) ? Number(log.hoursWorked) * 60 : 0);
+      payroll[empId].totalMinutes += mins;
+      payroll[empId].shiftCount += 1;
+    });
+
+    const rows = ['Employee ID,Staff Name,Role,Shifts Worked,Total Hours,Hourly Rate ($),Estimated Pay ($)'];
+    Object.values(payroll).forEach(p => {
+      const hours = (p.totalMinutes / 60).toFixed(2);
+      const estPay = (parseFloat(hours) * p.hourlyRate).toFixed(2);
+      rows.push(`"${p.id}","${p.name}","${p.role}",${p.shiftCount},${hours},${p.hourlyRate.toFixed(2)},${estPay}`);
+    });
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`kumon-payroll-${start}-to-${end}.csv`);
+    res.send(rows.join('\n'));
+  } catch (err) {
+    console.error('Payroll export error:', err);
+    res.status(500).send('Error compiling payroll export');
+  }
+});
+
+app.get('/api/analytics/traffic', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 14;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+
+    const [studentLogs, staffLogs] = await Promise.all([
+      StudentAttendanceLog.find({ date: { $gte: cutoffStr } }).lean(),
+      StaffShiftLog.find({ date: { $gte: cutoffStr } }).lean()
+    ]);
+
+    const hours = [12, 13, 14, 15, 16, 17, 18, 19, 20];
+    const trafficByHour = hours.map(h => ({
+      hourLabel: (h > 12 ? h - 12 : h) + ':00 ' + (h >= 12 ? 'PM' : 'AM'),
+      hour24: h,
+      students: 0,
+      staff: 0
+    }));
+
+    function parseHour(timeStr) {
+      if (!timeStr) return null;
+      const match = String(timeStr).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+      if (!match) {
+        const d = new Date(timeStr);
+        return isNaN(d) ? null : d.getHours();
+      }
+      let hr = parseInt(match[1], 10);
+      const meridiem = match[3] ? match[3].toUpperCase() : null;
+      if (meridiem === 'PM' && hr < 12) hr += 12;
+      if (meridiem === 'AM' && hr === 12) hr = 0;
+      return hr;
+    }
+
+    studentLogs.forEach(log => {
+      const h = parseHour(log.checkIn);
+      const bucket = trafficByHour.find(b => b.hour24 === h);
+      if (bucket) bucket.students += 1;
+    });
+
+    staffLogs.forEach(log => {
+      const h = parseHour(log.clockIn);
+      const bucket = trafficByHour.find(b => b.hour24 === h);
+      if (bucket) bucket.staff += 1;
+    });
+
+    const validDurations = studentLogs.map(l => Number(l.durationMinutes)).filter(n => !isNaN(n) && n > 0);
+    const avgStudentMinutes = validDurations.length
+      ? Math.round(validDurations.reduce((a, b) => a + b, 0) / validDurations.length)
+      : 0;
+
+    res.json({
+      periodDays: days,
+      totalStudentVisits: studentLogs.length,
+      totalStaffShifts: staffLogs.length,
+      avgStudentMinutes,
+      trafficByHour
+    });
+  } catch (err) {
+    console.error('Analytics error:', err);
+    res.status(500).json({ error: 'Failed to load traffic analytics' });
+  }
+});
+
 app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));
