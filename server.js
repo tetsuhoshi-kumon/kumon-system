@@ -898,21 +898,24 @@ app.get('/api/books/generate-id', async (req, res) => {
 
 app.get('/api/books-qr', async (req, res) => {
   try {
+    const rawCenter = (req.query.center || 'all').trim();
     let filter = {};
-    if (req.query.center === 'unassigned') {
+    if (rawCenter.toLowerCase() === 'camarillo') {
+      filter = { center: { $regex: /^camarillo$/i } };
+    } else if (rawCenter.toLowerCase() === 'thousand oaks') {
+      filter = { $or: [{ center: { $regex: /^thousand oaks$/i } }, { center: { $exists: false } }, { center: null }, { center: '' }] };
+    } else if (rawCenter === 'unassigned') {
       filter = { $or: [{ center: { $exists: false } }, { center: null }, { center: '' }] };
-    } else if (req.query.center === 'Thousand Oaks') {
-      filter = { $or: [{ center: 'Thousand Oaks' }, { center: { $exists: false } }, { center: null }, { center: '' }] };
-    } else if (req.query.center && req.query.center !== 'all') {
-      filter = { center: req.query.center };
     }
     const books = await Book.find(filter)
       .collation({ locale: 'en', numericOrdering: true })
-      .sort({ level: 1, bookNumber: 1, title: 1 });
+      .sort({ level: 1, bookNumber: 1, title: 1 })
+      .lean();
 
     const list = await Promise.all(books.map(async b => ({
-      ...b.toObject(),
-      qrCode: await QRCode.toDataURL(String(b.bookId))
+      ...b,
+      center: b.center || 'Thousand Oaks',
+      qrCode: await (typeof getCachedQrDataUrl === 'function' ? getCachedQrDataUrl(b.bookId) : QRCode.toDataURL(String(b.bookId)))
     })));
     res.json(list);
   } catch (err) {
