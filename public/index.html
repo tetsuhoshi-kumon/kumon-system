@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.05)</title>
+  <title>Kumon Center Management System (v1.08)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -2329,7 +2329,7 @@
     try {
       const bCenterEl = document.getElementById('bookCsvCenter');
       if (bCenterEl) formData.append('center', bCenterEl.value);
-      const res = await fetch('/api/upload-books', { method: 'POST', body: formData });
+      const res = await (() => { const _bc = document.getElementById('bookCsvCenter'); if (_bc && !formData.has('center')) formData.append('center', _bc.value); return fetch('/api/upload-books', { method: 'POST', body: formData }); })();
       const data = await res.json();
 
       if (res.ok && data.success) {
@@ -2853,7 +2853,7 @@
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.05)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.08)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2948,7 +2948,7 @@
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.05)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.08)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3013,6 +3013,86 @@
     }
   });
   setTimeout(decorateStickersWithCenterLabels, 600);
+
+
+  // ==========================================
+  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.08)
+  // ==========================================
+  window.applyClientSideBookFilter = function() {
+    if (window._isFilteringBooks) return;
+    window._isFilteringBooks = true;
+    try {
+      const filterEl = document.getElementById('bookCenterFilter');
+      const selected = filterEl ? filterEl.value : 'all';
+      const statusEl = document.getElementById('bookCenterStatus');
+
+      const bookCenterMap = {};
+      if (typeof allBooksList !== 'undefined' && Array.isArray(allBooksList)) {
+        allBooksList.forEach(b => {
+          if (b.bookId) {
+            bookCenterMap[String(b.bookId).trim()] = (b.center && String(b.center).trim()) ? String(b.center).trim() : 'Thousand Oaks';
+          }
+        });
+      }
+
+      let visibleRows = 0;
+      const rows = document.querySelectorAll('#books table tbody tr');
+      rows.forEach(row => {
+        const codeEl = row.querySelector('code');
+        const bId = codeEl ? codeEl.textContent.trim() : '';
+        const rowCenter = bookCenterMap[bId] || 'Thousand Oaks';
+
+        // Create or UPDATE the center pill on every pass so stale labels never stick
+        let pill = row.querySelector('.row-center-pill');
+        if (!pill && codeEl && codeEl.parentNode) {
+          pill = document.createElement('span');
+          pill.style.marginLeft = '6px';
+          codeEl.parentNode.appendChild(pill);
+        }
+        if (pill) {
+          pill.className = 'row-center-pill center-sticker-tag ' + (rowCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks');
+          pill.textContent = rowCenter;
+        }
+
+        const show = (selected === 'all') || (rowCenter.toLowerCase() === selected.toLowerCase());
+        row.style.display = show ? '' : 'none';
+        if (show) visibleRows++;
+      });
+
+      // Also filter sticker preview cards inside #books
+      const cards = document.querySelectorAll('#books .avery-label, #books .book-sticker-card, #books .qr-card');
+      cards.forEach(card => {
+        const txt = card.textContent || '';
+        const matchedId = Object.keys(bookCenterMap).find(id => txt.includes(id));
+        const cardCenter = matchedId ? bookCenterMap[matchedId] : (txt.toLowerCase().includes('camarillo') ? 'Camarillo' : 'Thousand Oaks');
+        const show = (selected === 'all') || (cardCenter.toLowerCase() === selected.toLowerCase());
+        card.style.display = show ? '' : 'none';
+      });
+
+      if (statusEl) {
+        statusEl.textContent = selected === 'all'
+          ? `Showing all ${visibleRows} book(s)`
+          : `Showing ${visibleRows} ${selected} book(s)`;
+      }
+    } finally {
+      setTimeout(() => { window._isFilteringBooks = false; }, 40);
+    }
+  };
+
+  // Ensure loadBooks always fetches ALL books into allBooksList so instant switching between All / Camarillo / Thousand Oaks works without missing data
+  if (typeof loadBooks === 'function' && !window._wrappedLoadBooksV108) {
+    window._wrappedLoadBooksV108 = true;
+    const _rawLoadBooks = loadBooks;
+    window.loadBooks = async function() {
+      const filterEl = document.getElementById('bookCenterFilter');
+      const savedSelection = filterEl ? filterEl.value : 'all';
+      // Temporarily set dropdown to 'all' during fetch if loadBooks reads it, so allBooksList always holds both centers
+      if (filterEl) filterEl.value = 'all';
+      await _rawLoadBooks.apply(this, arguments);
+      if (filterEl) filterEl.value = savedSelection;
+      window.applyClientSideBookFilter();
+    };
+  }
 
 </script>
 </body>

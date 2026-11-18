@@ -1131,7 +1131,8 @@ app.post('/api/upload-books', upload.single('file'), (req, res) => {
                   title: item.title,
                   author: item.author,
                   level: item.level,
-                  bookNumber: item.bookNumber
+                  bookNumber: item.bookNumber,
+                center: item.center || bookUploadCenter
                 }
               },
               upsert: true
