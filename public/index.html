@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.00)</title>
+  <title>Kumon Center Management System (v1.01)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -586,7 +586,18 @@
           <option value="Camarillo">Camarillo Only</option>
           <option value="Thousand Oaks">Thousand Oaks Only</option>
         </select>
-        <span id="bookCenterStatus" style="font-size: 0.85rem; color: #666; margin-left: auto;">Showing all books &amp; stickers</span>
+        <span id="bookCenterStatus" style="font-size: 0.85rem; color: #666;">Showing all books &amp; stickers</span>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; border-left: 2px solid #d0d7de; padding-left: 0.75rem;">
+          <span id="bulkSelectedBadge" style="font-size: 0.85rem; font-weight: bold; color: #2c3e50;">0 selected</span>
+          <select id="bulkTargetCenter" style="padding: 5px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem;">
+            <option value="Camarillo">Move to Camarillo</option>
+            <option value="Thousand Oaks">Move to Thousand Oaks</option>
+          </select>
+          <button type="button" class="btn-action" style="font-size: 12px; padding: 6px 10px;" onclick="bulkUpdateBookCenter()">Apply Center</button>
+          <button type="button" class="btn-danger" style="font-size: 12px; padding: 6px 10px; background: #c0392b; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="bulkDeleteBooks()">Delete Selected</button>
+        </div>
+
       </div>
 
 

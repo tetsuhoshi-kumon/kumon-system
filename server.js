@@ -1448,4 +1448,48 @@ app.get('/api/analytics/traffic', async (req, res) => {
   }
 });
 
+
+// ==========================================
+// BULK BOOK CENTER ASSIGNMENT & DELETE (v1.01)
+// ==========================================
+app.post('/api/books/bulk-center', async (req, res) => {
+  try {
+    const { bookIds, center } = req.body;
+    if (!Array.isArray(bookIds) || bookIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No books selected.' });
+    }
+    if (!center) {
+      return res.status(400).json({ success: false, message: 'Target center is required.' });
+    }
+    const result = await Book.updateMany(
+      { bookId: { $in: bookIds } },
+      { $set: { center: String(center).trim() } }
+    );
+    res.json({
+      success: true,
+      message: `Updated ${result.modifiedCount ?? result.nModified ?? bookIds.length} book(s) to ${center}!`
+    });
+  } catch (err) {
+    console.error('Bulk update center error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update center for selected books.' });
+  }
+});
+
+app.post('/api/books/bulk-delete', async (req, res) => {
+  try {
+    const { bookIds } = req.body;
+    if (!Array.isArray(bookIds) || bookIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No books selected.' });
+    }
+    const result = await Book.deleteMany({ bookId: { $in: bookIds } });
+    res.json({
+      success: true,
+      message: `Deleted ${result.deletedCount ?? bookIds.length} book(s) from the library.`
+    });
+  } catch (err) {
+    console.error('Bulk delete books error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete selected books.' });
+  }
+});
+
 app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));
