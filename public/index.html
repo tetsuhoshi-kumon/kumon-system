@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.11)</title>
+  <title>Kumon Center Management System (v1.12)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -2854,7 +2854,7 @@
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.11)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.12)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2949,7 +2949,7 @@
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.11)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.12)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3017,7 +3017,7 @@
 
 
   // ==========================================
-  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.11)
+  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.12)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3140,7 +3140,7 @@
   injectRegisterBookCenterSelect();
 
   // ==========================================
-  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.11)
+  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.12)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3266,6 +3266,114 @@
     bindCenterFilterListener();
     injectRegisterBookCenterSelect();
   }, 400);
+
+
+  // ==========================================
+  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.12)
+  // ==========================================
+  window.applyClientSideBookFilter = function() {
+    if (window._isFilteringBooks) return;
+    window._isFilteringBooks = true;
+    try {
+      const filterEl = document.getElementById('bookCenterFilter');
+      const selected = filterEl ? filterEl.value : 'all';
+      const statusEl = document.getElementById('bookCenterStatus');
+
+      const bookCenterMap = {};
+      if (typeof allBooksList !== 'undefined' && Array.isArray(allBooksList)) {
+        allBooksList.forEach(b => {
+          if (b.bookId) {
+            bookCenterMap[String(b.bookId).trim()] = (b.center && String(b.center).trim()) ? String(b.center).trim() : 'Thousand Oaks';
+          }
+        });
+      }
+
+      // 1. Filter Book Table Rows
+      let visibleRows = 0;
+      const rows = document.querySelectorAll('#books table tbody tr');
+      rows.forEach(row => {
+        const codeEl = row.querySelector('code');
+        const bId = codeEl ? codeEl.textContent.trim() : '';
+        const rowCenter = bookCenterMap[bId] || 'Thousand Oaks';
+
+        let pill = row.querySelector('.row-center-pill');
+        if (!pill && codeEl && codeEl.parentNode) {
+          pill = document.createElement('span');
+          pill.style.marginLeft = '6px';
+          codeEl.parentNode.appendChild(pill);
+        }
+        if (pill) {
+          pill.className = 'row-center-pill center-sticker-tag ' + (rowCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks');
+          pill.textContent = rowCenter;
+        }
+
+        const show = (selected === 'all') || (rowCenter.toLowerCase() === selected.toLowerCase());
+        row.style.display = show ? '' : 'none';
+        if (show) visibleRows++;
+      });
+
+      // 2. Filter Printable Sticker Cards (target every possible sticker container class/structure)
+      let visibleStickers = 0;
+      const stickerSelectors = [
+        '#books .avery-label',
+        '#books .book-sticker-card',
+        '#books .qr-card',
+        '#books .sticker-item',
+        '#books .label-card',
+        '#bookStickersGrid > div',
+        '#bookLabelsGrid > div',
+        '#printArea .avery-label',
+        '#printArea .qr-card'
+      ];
+      const stickerCards = document.querySelectorAll(stickerSelectors.join(', '));
+      stickerCards.forEach(card => {
+        // Determine bookId from data attribute, .book-id-sub, <code>, or card text
+        const subEl = card.querySelector('.book-id-sub, code');
+        let bId = card.getAttribute('data-book-id') || (subEl ? subEl.textContent.trim().split(/\s+/)[0] : '');
+        if (!bId || !bookCenterMap[bId]) {
+          const txt = card.textContent || '';
+          bId = Object.keys(bookCenterMap).find(id => txt.includes(id)) || '';
+        }
+
+        const cardCenter = bId && bookCenterMap[bId]
+          ? bookCenterMap[bId]
+          : ((card.textContent || '').toLowerCase().includes('camarillo') ? 'Camarillo' : 'Thousand Oaks');
+
+        // Ensure sticker card has the center badge
+        if (!card.querySelector('.center-sticker-tag')) {
+          const tag = document.createElement('div');
+          const cls = cardCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks';
+          tag.innerHTML = `<span class="center-sticker-tag ${cls}">${cardCenter}</span>`;
+          card.appendChild(tag);
+        }
+
+        const show = (selected === 'all') || (cardCenter.toLowerCase() === selected.toLowerCase());
+        card.style.setProperty('display', show ? '' : 'none', 'important');
+        if (show) visibleStickers++;
+      });
+
+      if (statusEl) {
+        const countToShow = Math.max(visibleRows, visibleStickers);
+        statusEl.textContent = selected === 'all'
+          ? `Showing all ${countToShow} book(s) & stickers`
+          : `Showing ${countToShow} ${selected} book(s) & stickers`;
+      }
+    } finally {
+      window._isFilteringBooks = false;
+    }
+  };
+
+  // Re-apply filter immediately whenever sticker cards or table rows finish rendering
+  (function() {
+    const booksTab = document.getElementById('books');
+    if (booksTab && !booksTab._v112Observer) {
+      booksTab._v112Observer = true;
+      const obs = new MutationObserver(() => {
+        window.applyClientSideBookFilter();
+      });
+      obs.observe(booksTab, { childList: true, subtree: true });
+    }
+  })();
 
 </script>
 </body>
