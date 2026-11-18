@@ -898,7 +898,12 @@ app.get('/api/books/generate-id', async (req, res) => {
 
 app.get('/api/books-qr', async (req, res) => {
   try {
-    const filter = (req.query.center && req.query.center !== 'all') ? { center: req.query.center } : {};
+    let filter = {};
+    if (req.query.center === 'unassigned') {
+      filter = { $or: [{ center: { $exists: false } }, { center: null }, { center: '' }] };
+    } else if (req.query.center && req.query.center !== 'all') {
+      filter = { center: req.query.center };
+    }
     const books = await Book.find(filter)
       .collation({ locale: 'en', numericOrdering: true })
       .sort({ level: 1, bookNumber: 1, title: 1 });
@@ -1489,6 +1494,42 @@ app.post('/api/books/bulk-delete', async (req, res) => {
   } catch (err) {
     console.error('Bulk delete books error:', err);
     res.status(500).json({ success: false, message: 'Failed to delete selected books.' });
+  }
+});
+
+
+// ==========================================
+// LEGACY / UNASSIGNED BOOK CLEANUP (v1.02)
+// ==========================================
+app.post('/api/books/delete-unassigned', async (req, res) => {
+  try {
+    const result = await Book.deleteMany({
+      $or: [
+        { center: { $exists: false } },
+        { center: null },
+        { center: '' }
+      ]
+    });
+    res.json({
+      success: true,
+      message: `Deleted ${result.deletedCount ?? 0} old unassigned book(s)!`
+    });
+  } catch (err) {
+    console.error('Delete unassigned books error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete unassigned books.' });
+  }
+});
+
+app.post('/api/books/delete-all', async (req, res) => {
+  try {
+    const result = await Book.deleteMany({});
+    res.json({
+      success: true,
+      message: `Cleared all ${result.deletedCount ?? 0} book(s) from the library!`
+    });
+  } catch (err) {
+    console.error('Delete all books error:', err);
+    res.status(500).json({ success: false, message: 'Failed to clear book library.' });
   }
 });
 

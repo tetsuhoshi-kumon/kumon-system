@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.01)</title>
+  <title>Kumon Center Management System (v1.02)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -585,6 +585,7 @@
           <option value="all">All Centers (Camarillo &amp; Thousand Oaks)</option>
           <option value="Camarillo">Camarillo Only</option>
           <option value="Thousand Oaks">Thousand Oaks Only</option>
+          <option value="unassigned">Old / Unassigned Books</option>
         </select>
         <span id="bookCenterStatus" style="font-size: 0.85rem; color: #666;">Showing all books &amp; stickers</span>
 
@@ -596,6 +597,10 @@
           </select>
           <button type="button" class="btn-action" style="font-size: 12px; padding: 6px 10px;" onclick="bulkUpdateBookCenter()">Apply Center</button>
           <button type="button" class="btn-danger" style="font-size: 12px; padding: 6px 10px; background: #c0392b; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="bulkDeleteBooks()">Delete Selected</button>
+
+          <button type="button" style="font-size: 12px; padding: 6px 10px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="deleteUnassignedBooks()">Delete Old Unassigned</button>
+          <button type="button" style="font-size: 12px; padding: 6px 10px; background: #7f8c8d; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="wipeAllBooks()">Wipe All Books</button>
+
         </div>
 
       </div>
@@ -2816,6 +2821,101 @@
         preloadKioskEntities();
       }
     };
+  }
+
+
+  // ==========================================
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.02)
+  // ==========================================
+  function toggleRowBookSelection(bookId, checked) {
+    if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
+    if (checked) {
+      selectedBookIds.add(bookId);
+    } else {
+      selectedBookIds.delete(bookId);
+    }
+    if (typeof refreshBulkSelectedCount === 'function') refreshBulkSelectedCount();
+  }
+
+  // Inject checkboxes into any book table rows that lack one after rendering
+  function ensureBookTableCheckboxes() {
+    if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
+    const rows = document.querySelectorAll('#books table tbody tr');
+    rows.forEach(row => {
+      if (row.querySelector('.book-row-cb')) return;
+      const codeEl = row.querySelector('code');
+      if (!codeEl) return;
+      const bId = codeEl.textContent.trim();
+      if (!bId) return;
+
+      const td = document.createElement('td');
+      td.style.textAlign = 'center';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'book-row-cb';
+      cb.checked = selectedBookIds.has(bId);
+      cb.onchange = () => toggleRowBookSelection(bId, cb.checked);
+      td.appendChild(cb);
+      row.insertBefore(td, row.firstChild);
+    });
+
+    // Also add header cell if missing
+    const headRow = document.querySelector('#books table thead tr');
+    if (headRow && !headRow.querySelector('.book-head-cb')) {
+      const th = document.createElement('th');
+      th.className = 'book-head-cb';
+      th.style.width = '36px';
+      th.style.textAlign = 'center';
+      const masterCb = document.createElement('input');
+      masterCb.type = 'checkbox';
+      masterCb.title = 'Select / Deselect all visible books';
+      masterCb.onchange = () => {
+        document.querySelectorAll('.book-row-cb').forEach(cb => {
+          cb.checked = masterCb.checked;
+          cb.dispatchEvent(new Event('change'));
+        });
+      };
+      th.appendChild(masterCb);
+      headRow.insertBefore(th, headRow.firstChild);
+    }
+  }
+
+  // Observe the books tab DOM so checkboxes appear automatically whenever books reload
+  const booksTabEl = document.getElementById('books');
+  if (booksTabEl) {
+    const obs = new MutationObserver(() => ensureBookTableCheckboxes());
+    obs.observe(booksTabEl, { childList: true, subtree: true });
+    setTimeout(ensureBookTableCheckboxes, 500);
+  }
+
+  async function deleteUnassignedBooks() {
+    if (!confirm('Delete all old books that were added before Camarillo / Thousand Oaks center tracking existed?')) return;
+    try {
+      const res = await fetch('/api/books/delete-unassigned', { method: 'POST' });
+      const data = await res.json();
+      alert(data.message);
+      if (typeof selectedBookIds !== 'undefined') selectedBookIds.clear();
+      if (typeof refreshBulkSelectedCount === 'function') refreshBulkSelectedCount();
+      if (typeof loadBooks === 'function') await loadBooks();
+    } catch (err) {
+      console.error('Delete unassigned error:', err);
+      alert('Network error deleting unassigned books.');
+    }
+  }
+
+  async function wipeAllBooks() {
+    if (!confirm('WARNING: This will delete EVERY book in both Camarillo and Thousand Oaks so you can re-import clean CSV lists. Continue?')) return;
+    try {
+      const res = await fetch('/api/books/delete-all', { method: 'POST' });
+      const data = await res.json();
+      alert(data.message);
+      if (typeof selectedBookIds !== 'undefined') selectedBookIds.clear();
+      if (typeof refreshBulkSelectedCount === 'function') refreshBulkSelectedCount();
+      if (typeof loadBooks === 'function') await loadBooks();
+    } catch (err) {
+      console.error('Wipe all books error:', err);
+      alert('Network error clearing books.');
+    }
   }
 
 </script>
