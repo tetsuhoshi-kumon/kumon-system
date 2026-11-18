@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.18)</title>
+  <title>Kumon Center Management System (v1.19)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -408,7 +408,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.18</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.19</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -2854,7 +2854,7 @@
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.18)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.19)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2949,7 +2949,7 @@
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.18)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.19)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3017,7 +3017,7 @@
 
 
   // ==========================================
-  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.18)
+  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.19)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3140,7 +3140,7 @@
   injectRegisterBookCenterSelect();
 
   // ==========================================
-  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.18)
+  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.19)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3269,7 +3269,7 @@
 
 
   // ==========================================
-  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.18)
+  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.19)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3377,7 +3377,7 @@
 
 
   // ==========================================
-  // SOLID SYNCHRONOUS CENTER FILTER (v1.18)
+  // SOLID SYNCHRONOUS CENTER FILTER (v1.19)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     const filterEl = document.getElementById('bookCenterFilter');
@@ -3479,7 +3479,7 @@
 
 
   // ==========================================
-  // BULLETPROOF CSS-NATIVE FILTER (v1.18)
+  // BULLETPROOF CSS-NATIVE FILTER (v1.19)
   // ==========================================
   (function() {
     // 1. Inject Global CSS Rules to hide rows/stickers natively
@@ -3602,7 +3602,7 @@
 
 
   // ==========================================
-  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.18)
+  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.19)
   // ==========================================
   if (!window._v117FetchBound) {
     window._v117FetchBound = true;
@@ -3634,7 +3634,7 @@
 
 
   // ==========================================
-  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.18)
+  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.19)
   // ==========================================
   window.onBookCenterFilterChange = function() {
     if (typeof loadBooks === 'function') loadBooks();
@@ -3643,6 +3643,7 @@
   // Intercept fetch to ALWAYS apply the selected center from the dropdown when fetching books-qr
   if (!window._v118FetchHook) {
     window._v118FetchHook = true;
+    console.log('v1.19 Fetch Hook Active!');
     const origFetch = window.fetch;
     window.fetch = function() {
       let args = Array.prototype.slice.call(arguments);
@@ -3652,6 +3653,7 @@
         const centerVal = filterEl ? filterEl.value : 'all';
         // Strip existing center query if any
         url = url.split('?')[0] + '?center=' + encodeURIComponent(centerVal);
+        console.log('Intercepted fetch! Requesting:', url);
         args[0] = url;
       }
       return origFetch.apply(this, args).then(res => {

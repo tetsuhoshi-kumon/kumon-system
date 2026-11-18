@@ -7,6 +7,7 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 
 const app = express();
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 const upload = multer({ dest: 'uploads/' });
 
 app.use(cors());
@@ -899,6 +900,8 @@ app.get('/api/books/generate-id', async (req, res) => {
 app.get('/api/books-qr', async (req, res) => {
   try {
     const rawCenter = (req.query.center || 'all').trim();
+    console.log('=> API Request /api/books-qr for center:', rawCenter);
+    
     let filter = {};
     if (rawCenter.toLowerCase() === 'camarillo') {
       filter = { center: { $regex: /^camarillo$/i } };
@@ -907,10 +910,13 @@ app.get('/api/books-qr', async (req, res) => {
     } else if (rawCenter === 'unassigned') {
       filter = { $or: [{ center: { $exists: false } }, { center: null }, { center: '' }] };
     }
+    
     const books = await Book.find(filter)
       .collation({ locale: 'en', numericOrdering: true })
       .sort({ level: 1, bookNumber: 1, title: 1 })
       .lean();
+
+    console.log('=> Found ' + books.length + ' books for ' + rawCenter);
 
     const list = await Promise.all(books.map(async b => ({
       ...b,
@@ -919,244 +925,11 @@ app.get('/api/books-qr', async (req, res) => {
     })));
     res.json(list);
   } catch (err) {
+    console.error('QR Error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch book barcodes.' });
   }
 });
 
-app.post('/api/books', async (req, res) => {
-  let { bookId, title, author, level, bookNumber, center } = req.body;
-
-  if (!title || !title.trim()) {
-    return res.status(400).json({ success: false, message: 'Book title is required.' });
-  }
-
-  if (!bookId || !bookId.trim()) {
-    bookId = await generateUniqueBookId(level || 'GEN');
-  } else {
-    bookId = String(bookId).trim();
-  }
-
-  try {
-    const book = await Book.findOneAndUpdate(
-      { bookId },
-      {
-        bookId,
-        id: bookId,
-        title: String(title).trim(),
-        author: String(author || '').trim(),
-        level: String(level || 'General').trim(),
-        bookNumber: String(bookNumber || '').trim(),
-        center: String(center || 'Thousand Oaks').trim()
-      },
-      { upsert: true, new: true, runValidators: true }
-    );
-    res.json({ success: true, message: `Saved "${book.title}" (${book.bookId})!`, book });
-  } catch (err) {
-    console.error('Save Book Error:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: err.code === 11000 
-        ? `Duplicate ID "${bookId}". Please generate a fresh identifier.` 
-        : (err.message || 'Failed to save book.') 
-    });
-  }
-});
-
-app.delete('/api/books/:id', async (req, res) => {
-  try {
-    await Book.findOneAndDelete({ bookId: req.params.id });
-    res.json({ success: true, message: 'Book deleted from inventory.' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to delete book.' });
-  }
-});
-
-app.post('/api/books/scan', async (req, res) => {
-  const { barcode, studentId } = req.body;
-  const cleanBookId = String(barcode || '').trim();
-  const cleanStudentId = String(studentId || '').trim();
-
-  try {
-    const book = await Book.findOne({ bookId: cleanBookId });
-    if (!book) {
-      return res.status(404).json({ success: false, message: `Book barcode "${cleanBookId}" not registered.` });
-    }
-
-    if (book.status === 'CHECKED_OUT') {
-      const checkoutTime = book.checkoutTime ? new Date(book.checkoutTime) : new Date();
-      const daysOut = Math.max(1, Math.round((new Date() - checkoutTime) / (1000 * 60 * 60 * 24)));
-
-      const log = new BookLog({
-        bookId: book.bookId,
-        title: book.title,
-        author: book.author,
-        level: book.level,
-        bookNumber: book.bookNumber,
-        studentId: book.currentHolderId,
-        studentName: book.currentHolderName,
-        parentPhone: book.parentPhone || '',
-        checkoutDate: book.checkoutDate,
-        returnDate: getDate(),
-        daysOut
-      });
-      await log.save();
-
-      const previousHolder = book.currentHolderName;
-      book.status = 'AVAILABLE';
-      book.currentHolderId = null;
-      book.currentHolderName = null;
-      book.parentPhone = '';
-      book.checkoutDate = null;
-      book.checkoutTime = null;
-      await book.save();
-
-      return res.json({
-        success: true,
-        action: 'RETURNED',
-        message: `Returned "${book.title}". Checked back in from ${previousHolder} (${daysOut} day${daysOut > 1 ? 's' : ''} out).`
-      });
-    }
-
-    if (!cleanStudentId) {
-      return res.status(200).json({
-        success: false,
-        action: 'NEED_STUDENT',
-        bookTitle: book.title,
-        message: `"${book.title}" is available. Please select or scan a Student ID to check it out.`
-      });
-    }
-
-    const student = await Student.findOne({ id: cleanStudentId });
-    if (!student) {
-      return res.status(404).json({ success: false, message: `Student ID "${cleanStudentId}" not found.` });
-    }
-
-    book.status = 'CHECKED_OUT';
-    book.currentHolderId = student.id;
-    book.currentHolderName = `${student.firstName} ${student.lastName}`.trim();
-    book.parentPhone = student.parentPhone || '';
-    book.checkoutDate = getDate();
-    book.checkoutTime = new Date();
-    await book.save();
-
-    return res.json({
-      success: true,
-      action: 'CHECKED_OUT',
-      message: `Checked out "${book.title}" to ${book.currentHolderName} (${student.id}).`
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error processing book scan.' });
-  }
-});
-
-// --- 9. CSV Uploads ---
-app.post('/api/upload-roster', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
-  const uploadCenter = req.body.center || 'Thousand Oaks';
-
-  const results = [];
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on('data', (row) => {
-      const id = row.id || row.ID || row['Student ID'] || row['student_id'];
-      const firstName = row.firstName || row['First Name'] || row.first_name || '';
-      const lastName = row.lastName || row['Last Name'] || row.last_name || '';
-      const subject = row.subject || row.Subject || 'Math';
-      const parentPhone = row.parentPhone || row['Parent Phone'] || row.phone || '';
-
-      if (id) {
-        results.push({
-          id: String(id).trim(),
-          firstName: String(firstName).trim(),
-          lastName: String(lastName).trim(),
-          subject: String(subject).trim(),
-          parentPhone: String(parentPhone).trim(),
-          center: String(row.center || row.Center || uploadCenter).trim()
-        });
-      }
-    })
-    .on('end', async () => {
-      try {
-        const operations = results.map(s => ({
-          updateOne: { filter: { id: s.id }, update: { $set: s }, upsert: true }
-        }));
-        if (operations.length > 0) await Student.bulkWrite(operations);
-        fs.unlinkSync(req.file.path);
-        res.json({ success: true, message: `Imported ${results.length} students into MongoDB Atlas!` });
-      } catch (err) {
-        res.status(500).json({ success: false, message: 'Database import failed.' });
-      }
-    });
-});
-
-app.post('/api/upload-books', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
-  const bookUploadCenter = req.body.center || 'Thousand Oaks';
-
-  const results = [];
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on('data', (row) => {
-      const title = row.title || row.Title || row['Book Title'] || '';
-      const author = row.author || row.Author || '';
-      const level = row.level || row.Level || 'General';
-      const bookNumber = row.bookNumber || row.Number || row['Book Number'] || row['#'] || '';
-      const bookId = row.bookId || row.ID || row['Book ID'] || row.Barcode || '';
-
-      if (String(title).trim()) {
-        results.push({
-          title: String(title).trim(),
-          author: String(author).trim(),
-          level: String(level).trim(),
-          bookNumber: String(bookNumber).trim(),
-          bookId: bookId ? String(bookId).trim() : null,
-          center: String(row.center || row.Center || bookUploadCenter).trim()
-        });
-      }
-    })
-    .on('end', async () => {
-      try {
-        const operations = [];
-
-        for (const item of results) {
-          let finalId = item.bookId;
-          if (!finalId) {
-            finalId = await generateUniqueBookId(item.level);
-          }
-
-          operations.push({
-            updateOne: {
-              filter: { bookId: finalId },
-              update: {
-                $set: {
-                  bookId: finalId,
-                  id: finalId,
-                  title: item.title,
-                  author: item.author,
-                  level: item.level,
-                  bookNumber: item.bookNumber,
-                center: item.center || bookUploadCenter
-                }
-              },
-              upsert: true
-            }
-          });
-        }
-
-        if (operations.length > 0) {
-          await Book.bulkWrite(operations);
-        }
-
-        fs.unlinkSync(req.file.path);
-        res.json({ success: true, message: `Successfully imported ${results.length} books into the library!` });
-      } catch (err) {
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.status(500).json({ success: false, message: 'Failed to process book CSV upload.' });
-      }
-    });
-});
-
-// --- 10. Filtered CSV Exports ---
 app.get('/api/export/student-logs', async (req, res) => {
   const { startDate, endDate } = req.query;
 
