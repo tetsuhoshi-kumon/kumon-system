@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.02)</title>
+  <title>Kumon Center Management System (v1.04)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -352,7 +352,34 @@
       .badge-spacer { visibility: hidden !important; border: none !important; height: 1.0in !important; width: 2.625in !important; }
       .badge-qr { width: 0.78in !important; height: 0.78in !important; }
     }
-  </style>
+  
+  .center-sticker-tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-top: 2px;
+    border: 1px solid #2c3e50;
+    color: #2c3e50;
+    background: #f0f4f8;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .center-sticker-tag.camarillo {
+    border-color: #1a5276;
+    color: #1a5276;
+    background: #ebf5fb;
+  }
+  .center-sticker-tag.thousand-oaks {
+    border-color: #0e6251;
+    color: #0e6251;
+    background: #e8f8f5;
+  }
+
+</style>
 </head>
 <body>
 
@@ -2183,7 +2210,8 @@
             </div>
             <div class="book-title-line">${b.title}</div>
             <div class="book-author-line">${b.author ? 'By ' + b.author : ''}</div>
-            <div class="book-id-sub">${b.bookId} • <strong>${b.center === 'Camarillo' ? 'CAM' : 'TO'}</strong></div>
+            <div class="book-id-sub">${b.bookId}</div>
+            <div><span class="center-sticker-tag ${(b.center || 'Thousand Oaks') === 'Camarillo' ? 'camarillo' : 'thousand-oaks'}">${b.center || 'Thousand Oaks'}</span></div>
           </div>
           <img class="badge-qr" src="${b.qrCode}" alt="Book QR" />
         </div>
@@ -2917,6 +2945,70 @@
       alert('Network error clearing books.');
     }
   }
+
+
+  // ==========================================
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.04)
+  // ==========================================
+  function decorateStickersWithCenterLabels() {
+    // 1. Decorate Book Avery stickers in print sheet or preview cards
+    if (typeof allBooksList !== 'undefined' && Array.isArray(allBooksList)) {
+      const bookCenterMap = {};
+      allBooksList.forEach(b => {
+        if (b.bookId) bookCenterMap[String(b.bookId).trim()] = b.center || 'Thousand Oaks';
+      });
+
+      const bookStickers = document.querySelectorAll('#books .avery-label, #printArea .avery-label, .book-sticker-card');
+      bookStickers.forEach(card => {
+        if (card.querySelector('.center-sticker-tag')) return;
+        const txt = card.textContent || '';
+        const matchedId = Object.keys(bookCenterMap).find(id => txt.includes(id));
+        if (matchedId) {
+          const centerName = bookCenterMap[matchedId];
+          const tag = document.createElement('div');
+          const cls = centerName === 'Camarillo' ? 'camarillo' : 'thousand-oaks';
+          tag.innerHTML = `<span class="center-sticker-tag ${cls}">${centerName}</span>`;
+          card.appendChild(tag);
+        }
+      });
+    }
+
+    // 2. Decorate Student Badge stickers in the Badges tab or print sheet
+    if (typeof allStudents !== 'undefined' && Array.isArray(allStudents)) {
+      const studentCenterMap = {};
+      allStudents.forEach(st => {
+        if (st.id) studentCenterMap[String(st.id).trim()] = st.center || 'Thousand Oaks';
+      });
+
+      const badgeCards = document.querySelectorAll('#badges .avery-label, #badges .badge-card, #badges .student-badge, #badges .qr-card, #printArea .avery-label');
+      badgeCards.forEach(card => {
+        if (card.querySelector('.center-sticker-tag')) return;
+        const sid = card.getAttribute('data-student-id');
+        let centerName = sid && studentCenterMap[sid] ? studentCenterMap[sid] : null;
+        if (!centerName) {
+          const txt = card.textContent || '';
+          const matchedId = Object.keys(studentCenterMap).find(id => txt.includes(id));
+          if (matchedId) centerName = studentCenterMap[matchedId];
+        }
+        if (centerName) {
+          const tag = document.createElement('div');
+          const cls = centerName === 'Camarillo' ? 'camarillo' : 'thousand-oaks';
+          tag.innerHTML = `<span class="center-sticker-tag ${cls}">${centerName}</span>`;
+          card.appendChild(tag);
+        }
+      });
+    }
+  }
+
+  // Watch DOM updates in #books, #badges, and #printArea so every sticker always gets its center label
+  ['books', 'badges', 'printArea'].forEach(containerId => {
+    const el = document.getElementById(containerId);
+    if (el) {
+      const obs = new MutationObserver(() => decorateStickersWithCenterLabels());
+      obs.observe(el, { childList: true, subtree: true });
+    }
+  });
+  setTimeout(decorateStickersWithCenterLabels, 600);
 
 </script>
 </body>
