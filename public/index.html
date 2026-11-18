@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.04)</title>
+  <title>Kumon Center Management System (v1.05)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -2853,7 +2853,7 @@
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.02)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.05)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2948,7 +2948,7 @@
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.04)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.05)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3004,8 +3004,12 @@
   ['books', 'badges', 'printArea'].forEach(containerId => {
     const el = document.getElementById(containerId);
     if (el) {
-      const obs = new MutationObserver(() => decorateStickersWithCenterLabels());
-      obs.observe(el, { childList: true, subtree: true });
+      let _decTimer = null;
+      const obs = new MutationObserver(() => {
+        clearTimeout(_decTimer);
+        _decTimer = setTimeout(decorateStickersWithCenterLabels, 150);
+      });
+      obs.observe(el, { childList: true, subtree: false });
     }
   });
   setTimeout(decorateStickersWithCenterLabels, 600);

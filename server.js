@@ -901,6 +901,8 @@ app.get('/api/books-qr', async (req, res) => {
     let filter = {};
     if (req.query.center === 'unassigned') {
       filter = { $or: [{ center: { $exists: false } }, { center: null }, { center: '' }] };
+    } else if (req.query.center === 'Thousand Oaks') {
+      filter = { $or: [{ center: 'Thousand Oaks' }, { center: { $exists: false } }, { center: null }, { center: '' }] };
     } else if (req.query.center && req.query.center !== 'all') {
       filter = { center: req.query.center };
     }
