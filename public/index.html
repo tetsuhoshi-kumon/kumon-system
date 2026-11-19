@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.36)</title>
+  <title>Kumon Center Management System (v1.37)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -407,7 +407,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.36</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.37</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -1171,7 +1171,195 @@
           <script>
             window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
           <\/script>
+        
+<!-- V1.37 SORT & TRUNCATE OVERRIDE -->
+<script>
+  console.log("v1.37 Active: Injecting Kumon Order Sorting & Title Truncation.");
+
+  window.sortKumonBooks = function(books) {
+    const order = ['7A','6A','5A','4A','3A','2A','A','B','C','D','E','F','G','H','I','J','K','L'];
+    return [...books].sort((a, b) => {
+      const lvlA = String(a.level || '').toUpperCase().trim();
+      const lvlB = String(b.level || '').toUpperCase().trim();
+      
+      let idxA = order.indexOf(lvlA);
+      let idxB = order.indexOf(lvlB);
+      if (idxA === -1) idxA = 999;
+      if (idxB === -1) idxB = 999;
+      
+      // 1. Sort by Level
+      if (idxA !== idxB) return idxA - idxB;
+      
+      // 2. Sort by Book Number
+      const numA = parseInt(String(a.bookNumber).replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt(String(b.bookNumber).replace(/\D/g, ''), 10) || 0;
+      if (numA !== numB) return numA - numB;
+      
+      // 3. Alphabetical Title Fallback
+      return String(a.title || '').localeCompare(String(b.title || ''));
+    });
+  };
+
+  // Override loadBooks to enforce the sort immediately
+  window.loadBooks = async function() {
+    const centerFilter = window.__V136_ACTIVE_CENTER__ || 'all';
+    try {
+      const res = await fetch('/api/books-qr?center=' + encodeURIComponent(centerFilter));
+      const rawBooks = await res.json();
+      
+      // Apply custom Kumon sort!
+      window.allBooksList = window.sortKumonBooks(rawBooks);
+      
+      if (typeof refreshBookTitleDatalist === 'function') refreshBookTitleDatalist();
+      if (typeof renderBorrowedBooksTable === 'function') renderBorrowedBooksTable();
+      window.renderBookBadges(window.allBooksList);
+      if (typeof decorateBookDOM === 'function') decorateBookDOM();
+    } catch (err) { console.error('Failed to load books:', err); }
+  };
+
+  // Override rendering to use truncation and properly restore print buttons
+  window.renderBookBadges = function(rawList) {
+    const list = window.sortKumonBooks(rawList);
+    const items = []; 
+    
+    // Add empty spacers to hit the correct start slot
+    for (let i = 1; i < currentBookStartSlot; i++) {
+      items.push(`<div class="badge-card badge-spacer"></div>`);
+    }
+    
+    list.forEach(b => {
+      let safeTitle = b.title || '';
+      if (safeTitle.length > 27) {
+        safeTitle = safeTitle.substring(0, 25) + '...';
+      }
+      
+      const safeTitleJs = (b.title || '').replace(/'/g, "\\'");
+      const safeAuthorJs = (b.author || '').replace(/'/g, "\\'");
+      const safeLevelJs = (b.level || 'GEN').replace(/'/g, "\\'");
+      const safeNumberJs = (b.bookNumber || '').replace(/'/g, "\\'");
+      
+      const isChecked = typeof selectedBookIds !== 'undefined' && selectedBookIds.has(b.bookId) ? 'checked' : '';
+
+      items.push(`
+        <div class="badge-card">
+          <div class="no-print" style="position:absolute;top:4px;right:4px; display:flex; gap:4px; align-items:center;">
+            <input type="checkbox" ${isChecked} 
+              onchange="if(this.checked) selectedBookIds.add('${b.bookId}'); else selectedBookIds.delete('${b.bookId}'); document.getElementById('selectedBookCount').textContent = selectedBookIds.size;" 
+            />
+            <button class="chip-btn" style="background:#27ae60;" 
+              onclick="printSingleBookBadge('${safeTitleJs}', '${safeAuthorJs}', '${safeLevelJs}', '${safeNumberJs}', '${b.bookId}', '${b.qrCode}')" 
+              title="Print label">🖨️</button>
+            <button class="chip-btn" style="background:#e74c3c;" 
+              onclick="deleteBook('${b.bookId}')">✕</button>
+          </div>
+          <div class="book-badge-info">
+            <div class="book-tag-pill" style="font-size:13px;font-weight:900;">
+              ${b.level} ${b.bookNumber?' - '+b.bookNumber:''}
+            </div>
+            <div style="font-size:13px;font-weight:800;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(b.title || '').replace(/"/g, '&quot;')}">
+              ${safeTitle}
+            </div>
+            <div class="book-id-sub">${b.bookId}</div>
+          </div>
+          <img class="badge-qr" src="${b.qrCode}" />
+        </div>
+      `);
+    });
+
+    const pages = []; 
+    for (let i = 0; i < items.length; i += 30) {
+      pages.push(`<div class="sheet-page">${items.slice(i, i+30).join('')}</div>`);
+    }
+    
+    const container = document.getElementById('bookBadgeContainer');
+    if (container) container.innerHTML = pages.join('');
+    
+    const countEl = document.getElementById('selectedBookCount');
+    if (countEl) countEl.textContent = selectedBookIds.size;
+  };
+
+  // Override Single Badge Print to also use truncation
+  window.printSingleBookBadge = function(title, author, level, number, id, qrCode) {
+    const printWindow = window.open('', '_blank', 'width=450,height=300');
+    const levelNumberLabel = number ? `${level || 'GEN'} - ${number}` : `${level || 'GEN'}`;
+    
+    let safeTitle = title || '';
+    if (safeTitle.length > 27) safeTitle = safeTitle.substring(0, 25) + '...';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Book Label - ${title}</title>
+          <style>
+            @page { size: 2.625in 1in; margin: 0; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 0.08in 0.12in;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              width: 2.625in;
+              height: 1in;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .info { line-height: 1.1; font-size: 11px; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+            .tag { display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px; }
+            .pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.3px; }
+            .title { font-size: 13px; font-weight: 800; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.68in; }
+            .id { font-size: 9px; color: #888; font-family: monospace; margin-top: 2px; }
+            .qr { width: 0.78in; height: 0.78in; flex-shrink: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="info">
+            <div class="tag"><span class="pill">${levelNumberLabel}</span></div>
+            <div class="title">${safeTitle}</div>
+            <div class="id">${id}</div>
+          </div>
+          <img class="qr" src="${qrCode}" alt="QR" />
+          <script>
+            window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+          <\/script>
         </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+  
+  // Re-hook UI functions to point to the new overriding renderBookBadges
+  window.selectAllBooks = function(sel) { 
+    if(sel) {
+      window.allBooksList.forEach(b => selectedBookIds.add(b.bookId));
+    } else {
+      selectedBookIds.clear();
+    }
+    window.renderBookBadges(window.allBooksList); 
+  };
+  
+  window.applyBookStickerOffset = function() { 
+    currentBookStartSlot = parseInt(document.getElementById('startSlotSelectBook').value)||1; 
+    window.renderBookBadges(window.allBooksList); 
+  };
+  
+  window.resetBookStickerOffset = function() { 
+    currentBookStartSlot = 1; 
+    const sel = document.getElementById('startSlotSelectBook');
+    if(sel) sel.value = 1; 
+    window.renderBookBadges(window.allBooksList); 
+  };
+
+  // Trigger an initial resort & render if books are already loaded
+  if (window.allBooksList && window.allBooksList.length > 0) {
+    window.allBooksList = window.sortKumonBooks(window.allBooksList);
+    window.renderBookBadges(window.allBooksList);
+  }
+</script>
+
+</body>
       </html>
     `);
     printWindow.document.close();
