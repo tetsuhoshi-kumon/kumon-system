@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.32)</title>
+  <title>Kumon Center Management System (v1.21)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -91,7 +91,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.32</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.21</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -215,7 +215,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label for="v131BookCenterFilter" style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v131BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.32)</option>
+            <option value="all">View All Centers (v1.21)</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -832,6 +832,152 @@
     statusEl.textContent = 'Network Error: ' + err.message;
   }
 }
+
+  // ==========================================
+  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.21)
+  // ==========================================
+  window.getActiveCenterValue = function() {
+    // 1. Locate the dropdown that has our center names (bypassing ID typos)
+    const selects = Array.from(document.querySelectorAll('select'));
+    const filterSelect = selects.find(sel => 
+      sel.textContent.toLowerCase().includes('camarillo') && 
+      sel.textContent.toLowerCase().includes('thousand') &&
+      (!sel.id || !sel.id.toLowerCase().includes('register'))
+    );
+
+    if (filterSelect && filterSelect.selectedIndex >= 0) {
+      const opt = filterSelect.options[filterSelect.selectedIndex];
+      const text = (opt.textContent || '').toLowerCase();
+      const val = (filterSelect.value || '').toLowerCase();
+      
+      // 2. Read the visible TEXT of the dropdown option, completely ignoring broken value="" attributes!
+      if (text.includes('camarillo') || val === 'camarillo') return 'Camarillo';
+      if (text.includes('thousand') || val.includes('thousand')) return 'Thousand Oaks';
+      if (text.includes('unassigned') || val === 'unassigned') return 'Unassigned';
+    }
+    
+    return 'all';
+  };
+
+  window.onBookCenterFilterChange = function() {
+    if (typeof loadBooks === 'function') loadBooks();
+  };
+
+  if (!window._v121FetchHook) {
+    window._v121FetchHook = true;
+    const origFetch = window.fetch;
+    window.fetch = function() {
+      let args = Array.prototype.slice.call(arguments);
+      let url = args[0];
+      if (typeof url === 'string' && url.includes('/api/books-qr')) {
+        const centerVal = window.getActiveCenterValue();
+        url = url.split('?')[0] + '?center=' + encodeURIComponent(centerVal);
+        args[0] = url;
+        console.log('v1.21 Intercepted fetch! Requesting:', url);
+      }
+      return origFetch.apply(this, args).then(res => {
+        if (typeof url === 'string' && url.includes('/api/books-qr')) {
+          const clone = res.clone();
+          clone.json().then(data => {
+            if (Array.isArray(data)) {
+              window.allBooksList = data;
+              setTimeout(() => {
+                if (typeof decorateBookDOM === 'function') decorateBookDOM();
+              }, 200);
+            }
+          }).catch(err => console.error(err));
+        }
+        return res;
+      });
+    };
+  }
+
+  window.decorateBookDOM = function() {
+    const activeCenter = window.getActiveCenterValue();
+    const activeData = window.allBooksList || [];
+    let count = activeData.length;
+    
+    document.querySelectorAll('#books table tbody tr').forEach(row => {
+      const codeEl = row.querySelector('code');
+      const bId = codeEl ? codeEl.textContent.trim() : '';
+      const bookObj = activeData.find(b => String(b.bookId).trim() === bId);
+      const rowCenter = bookObj && bookObj.center ? bookObj.center : 'Thousand Oaks';
+
+      if (bId && !row.querySelector('.book-row-cb')) {
+        const td = document.createElement('td');
+        td.style.textAlign = 'center';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'book-row-cb';
+        cb.onchange = () => { if (typeof toggleRowBookSelection === 'function') toggleRowBookSelection(bId, cb.checked); };
+        td.appendChild(cb);
+        row.insertBefore(td, row.firstChild);
+      }
+      let pill = row.querySelector('.row-center-pill');
+      if (!pill && codeEl && codeEl.parentNode) {
+        pill = document.createElement('span');
+        pill.style.marginLeft = '6px';
+        codeEl.parentNode.appendChild(pill);
+      }
+      if (pill) {
+        pill.className = 'row-center-pill center-sticker-tag ' + (rowCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks');
+        pill.textContent = rowCenter;
+      }
+    });
+
+    const headRow = document.querySelector('#books table thead tr');
+    if (headRow && !headRow.querySelector('.book-head-cb')) {
+      const th = document.createElement('th');
+      th.className = 'book-head-cb';
+      th.style.width = '36px';
+      th.style.textAlign = 'center';
+      const masterCb = document.createElement('input');
+      masterCb.type = 'checkbox';
+      masterCb.title = 'Select All';
+      masterCb.onchange = () => {
+        document.querySelectorAll('#books table tbody tr .book-row-cb').forEach(cb => {
+          cb.checked = masterCb.checked;
+          cb.dispatchEvent(new Event('change'));
+        });
+      };
+      th.appendChild(masterCb);
+      headRow.insertBefore(th, headRow.firstChild);
+    }
+
+    document.querySelectorAll('#books .avery-label, #books .book-sticker-card, #books .qr-card').forEach(card => {
+      const subEl = card.querySelector('.book-id-sub, code');
+      let bId = card.getAttribute('data-book-id') || (subEl ? subEl.textContent.trim().split(/\s+/)[0] : '');
+      const bookObj = activeData.find(b => String(b.bookId).trim() === bId);
+      const cardCenter = bookObj && bookObj.center ? bookObj.center : 'Thousand Oaks';
+
+      if (!card.querySelector('.center-sticker-tag')) {
+        const tag = document.createElement('div');
+        const cls = cardCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks';
+        tag.innerHTML = '<span class="center-sticker-tag ' + cls + '">' + cardCenter + '</span>';
+        card.appendChild(tag);
+      }
+    });
+
+    const statusEl = document.getElementById('bookCenterStatus');
+    if (statusEl) {
+      const label = activeCenter === 'all' ? 'All Centers' : activeCenter;
+      statusEl.textContent = 'Showing ' + count + ' ' + label + ' book(s) & stickers';
+    }
+  };
+
+  setTimeout(() => {
+    const selects = Array.from(document.querySelectorAll('select'));
+    const filterSelect = selects.find(sel => 
+      sel.textContent.toLowerCase().includes('camarillo') && 
+      sel.textContent.toLowerCase().includes('thousand') &&
+      (!sel.id || !sel.id.toLowerCase().includes('register'))
+    );
+    if (filterSelect) {
+      filterSelect.removeAttribute('onchange');
+      filterSelect.addEventListener('change', window.onBookCenterFilterChange);
+    }
+  }, 500);
+
 </script>
 </body>
 </html>
