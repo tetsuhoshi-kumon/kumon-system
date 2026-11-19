@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.45)</title>
+  <title>Kumon Center Management System (v1.46)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -89,7 +89,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.45</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.46</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -164,6 +164,24 @@
           <button class="btn-action" style="font-size: 13px;" onclick="printAllBadges()">Print All</button>
         </div>
       </div>
+      
+      <!-- V1.46 RESTORED: ADD STUDENT -->
+      <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
+        <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <div style="display: flex; gap: 0.25rem; align-items: center;">
+            <input type="text" id="newStdId" placeholder="Official Kumon ID" style="width: 170px;" />
+            <button type="button" class="btn-warning" onclick="generateStudentTempId()" title="Generate temporary ID" style="padding: 0.6rem 0.75rem; font-size: 12px; font-weight: bold;">⚡ Auto-Gen Temp ID</button>
+          </div>
+          <input type="text" id="newStdFirst" placeholder="First Name" />
+          <input type="text" id="newStdLast" placeholder="Last Name" />
+          <select id="newStdSub"><option value="Math">Math (30m target)</option><option value="Reading">Reading (30m target)</option><option value="Math & Reading">Math & Reading (60m target)</option></select>
+          <input type="text" id="newStdPhone" placeholder="Parent Phone (optional)" />
+          <button class="btn-success" onclick="addStudent()">Save Student</button>
+        </div>
+      </div>
+      <!-- END ADD STUDENT -->
+
     </div>
     <div id="badgeContainer"></div>
   </div>
@@ -179,7 +197,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.45)</option>
+            <option value="all">View All Centers (v1.46)</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -207,6 +225,24 @@
         <tbody></tbody>
       </table>
     </div>
+    
+    <!-- V1.46 RESTORED: ADD BOOK -->
+    <div class="view-card no-print">
+      <h3>Register New Book</h3>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;">
+        <select id="registerBookCenterSelect" style="padding: 8px 10px; border-radius: 4px; border: 1px solid #94a3b8; font-weight: bold; background: #f8fafc; color: #0f172a;"><option value="Thousand Oaks" selected>Thousand Oaks</option><option value="Camarillo">Camarillo</option></select>
+        <input type="text" id="newBookTitle" placeholder="Book Title *" style="width: 240px;" />
+        <input type="text" id="newBookAuthor" placeholder="Author" style="width: 170px;" />
+        <input type="text" id="newBookLevel" placeholder="Level (e.g. 3A)" style="width: 130px;" oninput="onLevelInputChanged()" />
+        <input type="text" id="newBookNumber" placeholder="Book #" style="width: 90px;" />
+        <div style="display: flex; gap: 0.25rem; align-items: center;">
+          <input type="text" id="newBookId" placeholder="Book ID" style="width: 170px;" />
+          <button type="button" class="btn-warning" onclick="generateAutoBookId()" style="font-size: 11px; font-weight: bold; padding: 0.6rem 0.7rem;">⚡ Auto-Gen</button>
+        </div>
+        <button class="btn-success" onclick="addNewBook()">Save to Library</button>
+      </div>
+    </div>
+    <!-- END ADD BOOK -->
 
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
@@ -473,6 +509,71 @@
   };
 
   // ==============================================================
+  // V1.46 - RESTORED MISSING ADD STUDENT / ADD BOOK FUNCTIONS
+  // ==============================================================
+
+  function generateStudentTempId() {
+    const tempId = `TEMP-${Date.now().toString(36).toUpperCase().slice(-5)}-${Math.floor(10 + Math.random() * 90)}`;
+    const idInput = document.getElementById('newStdId');
+    if (idInput) { idInput.value = tempId; idInput.style.backgroundColor = '#fef3c7'; }
+  }
+
+  async function addStudent() {
+    const data = { 
+      id: document.getElementById('newStdId').value.trim(), 
+      firstName: document.getElementById('newStdFirst').value.trim(), 
+      lastName: document.getElementById('newStdLast').value.trim(), 
+      subject: document.getElementById('newStdSub').value, 
+      parentPhone: document.getElementById('newStdPhone') ? document.getElementById('newStdPhone').value.trim() : '',
+      isNewRegistration: true 
+    };
+    if (!data.firstName) return alert('First Name is required');
+    const res = await fetch('/api/students', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    if(res.ok) {
+      document.getElementById('newStdId').value = '';
+      document.getElementById('newStdId').style.backgroundColor = '';
+      document.getElementById('newStdFirst').value = '';
+      document.getElementById('newStdLast').value = '';
+      if(document.getElementById('newStdPhone')) document.getElementById('newStdPhone').value = '';
+      loadBadges();
+    } else {
+      const err = await res.json();
+      alert(err.message || 'Failed to register student');
+    }
+  }
+
+  async function generateAutoBookId() {
+    const lvl = document.getElementById('newBookLevel')?.value || 'GEN';
+    const res = await (await fetch(`/api/books/generate-id?level=${encodeURIComponent(lvl)}`)).json();
+    document.getElementById('newBookId').value = res.bookId;
+  }
+  function onLevelInputChanged() { 
+    const inp = document.getElementById('newBookId'); 
+    if(!inp.value || inp.value.startsWith('BK-')) generateAutoBookId(); 
+  }
+  async function addNewBook() {
+    const data = { 
+      title: document.getElementById('newBookTitle').value.trim(), 
+      author: document.getElementById('newBookAuthor').value.trim(), 
+      level: document.getElementById('newBookLevel').value.trim(), 
+      bookNumber: document.getElementById('newBookNumber').value.trim(), 
+      bookId: document.getElementById('newBookId').value.trim(), 
+      center: document.getElementById('registerBookCenterSelect').value 
+    };
+    if(!data.title) return alert('Book Title is required');
+    const res = await fetch('/api/books', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    if(res.ok) {
+      document.getElementById('newBookTitle').value = '';
+      document.getElementById('newBookAuthor').value = '';
+      document.getElementById('newBookLevel').value = '';
+      document.getElementById('newBookNumber').value = '';
+      document.getElementById('newBookId').value = '';
+      loadBooks();
+    } else {
+      alert('Failed to save book');
+    }
+  }
+
 
   function refreshGlobalDatalist() {
     const dl = document.getElementById('globalEntityDatalist');
@@ -715,7 +816,7 @@
           </div>
           <div class="book-badge-info">
             <div class="book-tag-pill">${b.level} ${b.bookNumber ? '- ' + b.bookNumber : ''}</div>
-            <div class="book-title-line">${safeTitle}</div>
+            <div class="book-title-line" title="${(b.title || '').replace(/"/g, '&quot;')}">${safeTitle}</div>
             <div class="book-id-sub">${b.bookId}</div>
             <div class="center-sticker-tag ${centerClass}">${b.center || 'Thousand Oaks'}</div>
           </div>
@@ -732,15 +833,6 @@
   }
 
   async function deleteBook(id) { if(confirm('Delete book?')){ await fetch(`/api/books/${id}`, {method:'DELETE'}); loadBooks(); } }
-  
-  async function bulkDeleteBooks() {
-    const ids = Array.from(selectedBookIds);
-    if(ids.length === 0) return alert('Select books first.');
-    if(!confirm(`Delete ${ids.length} books?`)) return;
-    await fetch('/api/books/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookIds: ids }) });
-    selectedBookIds.clear();
-    loadBooks();
-  }
 
   async function loadStaff() {
     allStaff = await (await fetch('/api/employees-qr')).json();
