@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.24)</title>
+  <title>Kumon Center Management System (v1.25)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -408,7 +408,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.24</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.25</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -1176,33 +1176,52 @@
             window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
           <\/script>
         
-<!-- V1.24 OVERRIDE -->
+<!-- V1.25 PRISTINE FETCH OVERRIDE -->
 <script>
-  console.log("v1.24 Active: Bruteforcing Dropdown Logic");
-  window.getActiveCenterValue = function() {
-    const selects = Array.from(document.querySelectorAll('select'));
-    const filterSelect = selects.find(sel => 
-      sel.textContent.toLowerCase().includes('camarillo') && 
-      sel.textContent.toLowerCase().includes('thousand') &&
-      (!sel.id || !sel.id.toLowerCase().includes('register'))
-    );
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("v1.25: Bypassing all legacy ghost hooks with Pristine Fetch");
     
-    if (!filterSelect || filterSelect.selectedIndex < 0) {
-      return 'all';
-    }
+    // Grab a pristine fetch engine from an invisible iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    const pureFetch = iframe.contentWindow.fetch;
     
-    // Read strictly what the user visibly sees on the screen
-    const opt = filterSelect.options[filterSelect.selectedIndex];
-    const text = (opt.textContent || '').trim().toLowerCase();
-    
-    console.log('v1.24 read visible text as:', text);
-    
-    if (text.includes('camarillo')) return 'Camarillo';
-    if (text.includes('thousand')) return 'Thousand Oaks';
-    if (text.includes('unassigned')) return 'Unassigned';
-    
-    return 'all';
-  };
+    window.fetch = async function() {
+        let args = Array.prototype.slice.call(arguments);
+        let url = args[0];
+        
+        if (typeof url === 'string' && url.includes('/api/books-qr')) {
+            const selects = Array.from(document.querySelectorAll('select'));
+            const sel = selects.find(s => s.textContent.toLowerCase().includes('camarillo') && s.textContent.toLowerCase().includes('thousand'));
+            
+            let center = 'all';
+            if (sel && sel.selectedIndex >= 0) {
+                const txt = sel.options[sel.selectedIndex].textContent.toLowerCase();
+                if (txt.includes('camarillo')) center = 'Camarillo';
+                else if (txt.includes('thousand')) center = 'Thousand Oaks';
+                else if (txt.includes('unassigned')) center = 'Unassigned';
+            }
+            
+            url = url.split('?')[0] + '?center=' + encodeURIComponent(center);
+            args[0] = url;
+            console.log('v1.25 Pristine Fetch requesting:', url);
+        }
+        
+        const res = await pureFetch.apply(window, args);
+        
+        if (typeof url === 'string' && url.includes('/api/books-qr')) {
+            const clone = res.clone();
+            clone.json().then(data => {
+                if (Array.isArray(data)) {
+                    window.allBooksList = data;
+                    setTimeout(() => { if (typeof window.decorateBookDOM === 'function') window.decorateBookDOM(); }, 200);
+                }
+            }).catch(e => console.log('v1.25 json clone err:', e));
+        }
+        return res;
+    };
+});
 </script>
 
 </body>
@@ -2884,7 +2903,7 @@
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.24)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.25)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2979,7 +2998,7 @@
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.24)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.25)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3047,7 +3066,7 @@
 
 
   // ==========================================
-  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.24)
+  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.25)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3170,7 +3189,7 @@
   injectRegisterBookCenterSelect();
 
   // ==========================================
-  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.24)
+  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.25)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3299,7 +3318,7 @@
 
 
   // ==========================================
-  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.24)
+  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.25)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3407,7 +3426,7 @@
 
 
   // ==========================================
-  // SOLID SYNCHRONOUS CENTER FILTER (v1.24)
+  // SOLID SYNCHRONOUS CENTER FILTER (v1.25)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     const filterEl = document.getElementById('bookCenterFilter');
@@ -3509,7 +3528,7 @@
 
 
   // ==========================================
-  // BULLETPROOF CSS-NATIVE FILTER (v1.24)
+  // BULLETPROOF CSS-NATIVE FILTER (v1.25)
   // ==========================================
   (function() {
     // 1. Inject Global CSS Rules to hide rows/stickers natively
@@ -3632,7 +3651,7 @@
 
 
   // ==========================================
-  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.24)
+  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.25)
   // ==========================================
   if (!window._v117FetchBound) {
     window._v117FetchBound = true;
@@ -3664,14 +3683,46 @@
 
 
   // ==========================================
-  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.24)
+  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.25)
   // ==========================================
   window.onBookCenterFilterChange = function() {
     if (typeof loadBooks === 'function') loadBooks();
   };
 
   // Intercept fetch to ALWAYS apply the selected center from the dropdown when fetching books-qr
-  
+  if (!window._v118FetchHook) {
+    window._v118FetchHook = true;
+    console.log('v1.19 Fetch Hook Active!');
+    const origFetch = window.fetch;
+    window.fetch = function() {
+      let args = Array.prototype.slice.call(arguments);
+      let url = args[0];
+      if (typeof url === 'string' && url.includes('/api/books-qr')) {
+        const filterEl = document.getElementById('bookCenterFilter');
+        const centerVal = filterEl ? filterEl.value : 'all';
+        // Strip existing center query if any
+        url = url.split('?')[0] + '?center=' + encodeURIComponent(centerVal);
+        console.log('Intercepted fetch! Requesting:', url);
+        args[0] = url;
+      }
+      return origFetch.apply(this, args).then(res => {
+        if (typeof url === 'string' && url.includes('/api/books-qr')) {
+          const clone = res.clone();
+          clone.json().then(data => {
+            if (Array.isArray(data)) {
+              window.allBooksList = data; // Save active data for bulk operations
+              
+              // Wait for the app's native renderer to finish drawing the DOM, then decorate it
+              setTimeout(() => {
+                decorateBookDOM();
+              }, 200);
+            }
+          }).catch(err => console.error(err));
+        }
+        return res;
+      });
+    };
+  }
 
   // Pure DOM Decoration (Adding Pills and Checkboxes to whatever was rendered)
   // Bind dropdown correctly
@@ -3685,24 +3736,28 @@
 
 
   // ==========================================
-  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.24)
+  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.25)
   // ==========================================
   window.getActiveCenterValue = function() {
+    // 1. Locate the dropdown that has our center names (bypassing ID typos)
     const selects = Array.from(document.querySelectorAll('select'));
     const filterSelect = selects.find(sel => 
       sel.textContent.toLowerCase().includes('camarillo') && 
       sel.textContent.toLowerCase().includes('thousand') &&
       (!sel.id || !sel.id.toLowerCase().includes('register'))
     );
+
     if (filterSelect && filterSelect.selectedIndex >= 0) {
       const opt = filterSelect.options[filterSelect.selectedIndex];
       const text = (opt.textContent || '').toLowerCase();
-      const val = (opt.value || '').toLowerCase(); // FIX: Read the option value directly, ignore the parent container
+      const val = (filterSelect.value || '').toLowerCase();
       
+      // 2. Read the visible TEXT of the dropdown option, completely ignoring broken value="" attributes!
       if (text.includes('camarillo') || val === 'camarillo') return 'Camarillo';
       if (text.includes('thousand') || val.includes('thousand')) return 'Thousand Oaks';
       if (text.includes('unassigned') || val === 'unassigned') return 'Unassigned';
     }
+    
     return 'all';
   };
 
@@ -3720,7 +3775,7 @@
         const centerVal = window.getActiveCenterValue();
         url = url.split('?')[0] + '?center=' + encodeURIComponent(centerVal);
         args[0] = url;
-        console.log('v1.24 Intercepted fetch! Requesting:', url);
+        console.log('v1.21 Intercepted fetch! Requesting:', url);
       }
       return origFetch.apply(this, args).then(res => {
         if (typeof url === 'string' && url.includes('/api/books-qr')) {
