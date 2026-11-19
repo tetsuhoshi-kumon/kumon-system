@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.39)</title>
+  <title>Kumon Center Management System (v1.40)</title>
   <style>
     :root {
       --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50;
@@ -102,7 +102,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.39</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.40</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -526,7 +526,48 @@
   function printSingleBadge(last, first, sub, qr) {
     const w = window.open('', '_blank', 'width=450,height=300');
     const isSub = sub.toLowerCase().includes('math') || sub.toLowerCase().includes('read');
-    w.document.write(`<html><head><style>@page { size: 2.625in 1in; margin: 0; } body { margin: 0; padding: 0.08in 0.12in; font-family: sans-serif; display: flex; align-items: center; justify-content: space-between; width: 2.625in; height: 1in; -webkit-print-color-adjust: exact !important; }</style></head><body><div style="line-height:1.05; max-width:1.68in;"><div style="font-size:20px; font-weight:900;">${last}</div><div style="font-size:16px; font-weight:700; color:#2c3e50; margin-bottom:2px;">${first}</div><div style="font-size:11px;">${isSub ? formatSubjectBadge(sub) : `<span style="color:#27ae60;font-weight:bold;">${sub}</span>`}</div></div><img src="${qr}" style="width:0.78in;height:0.78in;"/><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script></body></html>`);
+    w.document.write(`<html><head><style>@page { size: 2.625in 1in; margin: 0; } body { margin: 0; padding: 0.08in 0.12in; font-family: sans-serif; display: flex; align-items: center; justify-content: space-between; width: 2.625in; height: 1in; -webkit-print-color-adjust: exact !important; }</style></head><body><div style="line-height:1.05; max-width:1.68in;"><div style="font-size:20px; font-weight:900;">${last}</div><div style="font-size:16px; font-weight:700; color:#2c3e50; margin-bottom:2px;">${first}</div><div style="font-size:11px;">${isSub ? formatSubjectBadge(sub) : `<span style="color:#27ae60;font-weight:bold;">${sub}</span>`}</div></div><img src="${qr}" style="width:0.78in;height:0.78in;"/><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script>
+<!-- V1.40 PRINT LAYOUT OVERRIDE -->
+<script>
+  console.log("v1.40 Active: Injecting proper Avery 5160 print layout spacing.");
+
+  // We are overriding the renderBookBadges and renderBadges functions specifically 
+  // to ensure the top margin on the .sheet-page is correct and the layout aligns 
+  // perfectly with standard Avery 5160 / 8160 label sheets.
+  
+  // Also overriding the general print CSS block dynamically.
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @media print {
+      /* Force the sheet page to have exactly the right top margin for Avery 5160 */
+      .sheet-page {
+        padding-top: 0.5in !important; 
+        padding-bottom: 0.5in !important;
+        padding-left: 0.1875in !important;
+        padding-right: 0.1875in !important;
+        /* Ensure no extra margin is added by the browser at the top of the page */
+        margin-top: 0 !important;
+      }
+      
+      /* Hide the 'Start on Sticker #' toolbar completely when printing */
+      .toolbar-box, .no-print {
+        display: none !important;
+      }
+      
+      /* Ensure the page breaks properly and doesn't push down */
+      @page {
+        margin: 0 !important; /* This is critical. The padding inside .sheet-page creates the margin. */
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // We don't actually need to rewrite the JS render function, just inject the CSS fix 
+  // because the "column at the top" is usually caused by browser print margins 
+  // conflicting with the .sheet-page padding, or the toolbar not being hidden correctly.
+</script>
+
+</body></html>`);
     w.document.close();
   }
 
