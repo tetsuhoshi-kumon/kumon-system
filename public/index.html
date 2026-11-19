@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.37)</title>
+  <title>Kumon Center Management System (v1.38)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -407,7 +407,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.37</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.38</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -1172,9 +1172,11 @@
             window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
           <\/script>
         
-<!-- V1.37 SORT & TRUNCATE OVERRIDE -->
+
+
+<!-- V1.38 SORT & TRUNCATE OVERRIDE -->
 <script>
-  console.log("v1.37 Active: Injecting Kumon Order Sorting & Title Truncation.");
+  console.log("v1.38 Active: Injecting Kumon Order Sorting & Title Truncation.");
 
   window.sortKumonBooks = function(books) {
     const order = ['7A','6A','5A','4A','3A','2A','A','B','C','D','E','F','G','H','I','J','K','L'];
@@ -1201,21 +1203,25 @@
   };
 
   // Override loadBooks to enforce the sort immediately
-  window.loadBooks = async function() {
-    const centerFilter = window.__V136_ACTIVE_CENTER__ || 'all';
-    try {
-      const res = await fetch('/api/books-qr?center=' + encodeURIComponent(centerFilter));
-      const rawBooks = await res.json();
-      
-      // Apply custom Kumon sort!
-      window.allBooksList = window.sortKumonBooks(rawBooks);
-      
-      if (typeof refreshBookTitleDatalist === 'function') refreshBookTitleDatalist();
-      if (typeof renderBorrowedBooksTable === 'function') renderBorrowedBooksTable();
-      window.renderBookBadges(window.allBooksList);
-      if (typeof decorateBookDOM === 'function') decorateBookDOM();
-    } catch (err) { console.error('Failed to load books:', err); }
-  };
+  if (!window._v138Hooked) {
+    window._v138Hooked = true;
+    window.loadBooks = async function() {
+      // Use the global variable established in 1.36
+      const centerFilter = window.__V136_ACTIVE_CENTER__ || 'all';
+      try {
+        const res = await fetch('/api/books-qr?center=' + encodeURIComponent(centerFilter));
+        const rawBooks = await res.json();
+        
+        // Apply custom Kumon sort!
+        window.allBooksList = window.sortKumonBooks(rawBooks);
+        
+        if (typeof refreshBookTitleDatalist === 'function') refreshBookTitleDatalist();
+        if (typeof renderBorrowedBooksTable === 'function') renderBorrowedBooksTable();
+        if (typeof window.renderBookBadges === 'function') window.renderBookBadges(window.allBooksList);
+        if (typeof decorateBookDOM === 'function') decorateBookDOM();
+      } catch (err) { console.error('Failed to load books:', err); }
+    };
+  }
 
   // Override rendering to use truncation and properly restore print buttons
   window.renderBookBadges = function(rawList) {
