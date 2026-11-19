@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.43)</title>
+  <title>Kumon Center Management System (v1.44)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -43,7 +43,7 @@
     .subj-reading { background-color: #fdeed9; color: #d93829; border: 1px solid #fadbd8; }
     .subj-dual-wrapper { display: inline-flex; align-items: center; gap: 4px; }
     
-    /* V1.43 AVERY 5160 PRINT STYLES - STRIPPED & ENFORCED */
+    /* V1.44 AVERY 5160 PRINT STYLES - STRIPPED & ENFORCED */
     @media print {
       @page { margin: 0 !important; size: letter; }
       html, body { background: white !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -137,7 +137,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.43</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.44</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -222,7 +222,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.43)</option>
+            <option value="all">View All Centers</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -551,7 +551,7 @@
   async function deleteStudent(id) { if(confirm('Delete?')) { await fetch(`/api/students/${id}`, {method:'DELETE'}); loadBadges(); } }
 
   // ==============================================
-  // V1.43: BULLETPROOF SORTING & PRINT FIXES 
+  // V1.44: BULLETPROOF SORTING & PRINT FIXES 
   // ==============================================
   window.__V141_ACTIVE_CENTER__ = 'all';
 
@@ -648,7 +648,7 @@
   function resetBookStickerOffset() { currentBookStartSlot = 1; document.getElementById('startSlotSelectBook').value = 1; renderBookBadges(allBooksList); }
   function selectAllBooks(sel) { sel ? allBooksList.forEach(b => selectedBookIds.add(b.bookId)) : selectedBookIds.clear(); renderBookBadges(allBooksList); }
   
-  // V1.43: ROCK SOLID TEMPLATE RENDER
+  // V1.44: ROCK SOLID TEMPLATE RENDER
   function renderBookBadges(list) {
     const sorted = window.sortKumonBooks(list);
     const items = []; for (let i=1; i<currentBookStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
@@ -664,6 +664,7 @@
       const html = `<div class="badge-card">
           <div class="no-print" style="position:absolute;top:4px;right:4px;">
             <input type="checkbox" ${isChecked} onchange="if(this.checked) selectedBookIds.add('${b.bookId}'); else selectedBookIds.delete('${b.bookId}');" />
+            <button class="chip-btn" style="background:#27ae60;" onclick="printSingleBookBadge('${(b.title || '').replace(/'/g, "\\'")}', '${(b.author || '').replace(/'/g, "\\'")}', '${(b.level || 'GEN').replace(/'/g, "\\'")}', '${(b.bookNumber || '').replace(/'/g, "\\'")}', '${b.bookId}', '${b.qrCode || ''}')">🖨️</button>
             <button class="chip-btn" style="background:#e74c3c;" onclick="deleteBook('${b.bookId}')">✕</button>
           </div>
           <div class="book-badge-info">
@@ -683,6 +684,39 @@
     }
     document.getElementById('bookBadgeContainer').innerHTML = pages.join('');
   }
+
+  window.printSingleBookBadge = function(title, author, level, number, id, qrCode) {
+    const printWindow = window.open('', '_blank', 'width=450,height=300');
+    const levelNumberLabel = number ? `${level || 'GEN'} - ${number}` : `${level || 'GEN'}`;
+    let safeTitle = title || '';
+    if (safeTitle.length > 27) safeTitle = safeTitle.substring(0, 25) + '...';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Book Label - ${title}</title>
+          <style>
+            @page { size: 2.625in 1in; margin: 0; }
+            * { box-sizing: border-box; }
+            body { margin: 0; padding: 0.08in 0.12in; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: space-between; width: 2.625in; height: 1in; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; overflow: hidden; }
+            .info { line-height: 1.1; font-size: 11px; max-width: 1.6in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; height: 0.84in; }
+            .tag { display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; }
+            .pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 0px 4px; border-radius: 3px; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
+            .title { font-size: 12px; font-weight: 800; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 1px;}
+            .id { font-size: 9px; color: #888; font-family: monospace; margin-bottom: 1px; }
+            .qr { width: 0.78in !important; height: 0.78in !important; flex-shrink: 0; margin-left: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="info"><div class="tag"><span class="pill">${levelNumberLabel}</span></div><div class="title">${safeTitle}</div><div class="id">${id}</div></div>
+          <img class="qr" src="${qrCode}" alt="QR" />
+          <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };<\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   function printSelectedBookBadges() { renderBookBadges(allBooksList.filter(b => selectedBookIds.has(b.bookId))); window.print(); }
   function printAllBookBadges() { window.print(); }
