@@ -3,9 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.21)</title>
+  <title>Kumon Center Management System (v1.36)</title>
   <style>
-    :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
+    :root {
+      --primary: #2980b9;
+      --secondary: #27ae60;
+      --warning: #e67e22;
+      --danger: #e74c3c;
+      --dark: #2c3e50;
+    }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #eef2f5; color: #333; }
     header { background: var(--dark); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
@@ -17,73 +23,383 @@
     .view-card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #ddd; vertical-align: middle; }
     th { background: #f1f4f6; }
+
     input, select, button { padding: 0.6rem; border-radius: 4px; border: 1px solid #ccc; font-size: 1rem; }
     .btn-action { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
     .btn-danger { background: var(--danger); color: white; border: none; cursor: pointer; }
     .btn-success { background: var(--secondary); color: white; border: none; cursor: pointer; }
     .btn-warning { background: var(--warning); color: white; border: none; cursor: pointer; }
-    #scanToast { position: fixed; top: -120px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 380px; max-width: 90vw; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); color: white; font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 1rem; transition: top 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+
+    /* Scan Notification Toast Banner */
+    #scanToast {
+      position: fixed;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      min-width: 380px;
+      max-width: 90vw;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      color: white;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: top 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+    }
     #scanToast.toast-show { top: 20px; }
     #scanToast.toast-success { background: linear-gradient(135deg, #27ae60, #2ecc71); border-left: 6px solid #1e8449; }
     #scanToast.toast-error { background: linear-gradient(135deg, #c0392b, #e74c3c); border-left: 6px solid #922b21; }
-    .progress-bar-container { width: 140px; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 4px; }
-    .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+    /* Elapsed Time Progress Bar */
+    .progress-bar-container {
+      width: 140px;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
     .fill-blue { background: #3498db; }
     .fill-amber { background: #f39c12; }
     .fill-red { background: #e74c3c; animation: pulseProgress 1.4s infinite; }
-    @keyframes pulseProgress { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
-    .student-link { color: #2980b9; text-decoration: underline; cursor: pointer; font-weight: 700; }
-    .student-link:hover { color: #1a5276; }
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; z-index: 10000; }
-    .modal-card { background: white; border-radius: 8px; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-    .time-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
+    @keyframes pulseProgress {
+      0% { opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { opacity: 0.8; }
+    }
+
+    /* Clickable Student Name for Reading History */
+    .student-link {
+      color: #2980b9;
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .student-link:hover {
+      color: #1a5276;
+    }
+
+    /* Modal for Student Reading History */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .modal-card {
+      background: white;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 650px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    /* Time Status Badges */
+    .time-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
     .time-ok { background: #e8f8f0; color: #27ae60; }
     .time-warn { background: #fef5e7; color: #e67e22; border: 1px solid #f39c12; }
-    .time-alert { background: #fdebd0; color: #c0392b; border: 1px solid #e74c3c; animation: pulseAlert 1.5s infinite; }
-    @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
-    .subj-pill { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.2px; white-space: nowrap; }
-    .subj-math { background-color: #ebf5fb; color: #1d6fa5; border: 1px solid #aed6f1; }
-    .subj-reading { background-color: #fdeed9; color: #d93829; border: 1px solid #fadbd8; }
-    .subj-dual-wrapper { display: inline-flex; align-items: center; gap: 4px; }
-    .subj-dual-separator { font-size: 0.8rem; color: #7f8c8d; font-weight: bold; }
-    .sheet-page { background: white; width: 8.5in; min-height: 11in; padding: 0.5in 0.1875in; margin: 1.5rem auto; box-shadow: 0 0 10px rgba(0,0,0,0.15); box-sizing: border-box; }
-    .sheet-page .badge-card { float: left; width: 2.625in; height: 1.0in; margin-right: 0.125in; border: 1px dashed #ccc; box-sizing: border-box; padding: 0.08in 0.12in; display: flex; align-items: center; justify-content: space-between; position: relative; }
+    .time-alert {
+      background: #fdebd0;
+      color: #c0392b;
+      border: 1px solid #e74c3c;
+      animation: pulseAlert 1.5s infinite;
+    }
+    @keyframes pulseAlert {
+      0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+    }
+
+    /* Subject Pill Tags */
+    .subj-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .subj-math {
+      background-color: #ebf5fb;
+      color: #1d6fa5;
+      border: 1px solid #aed6f1;
+    }
+    .subj-reading {
+      background-color: #fdeed9;
+      color: #d93829;
+      border: 1px solid #fadbd8;
+    }
+    .subj-dual-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .subj-dual-separator {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      font-weight: bold;
+    }
+
+    /* Avery Sticker Layout & Print Media */
+    .sheet-page {
+      background: white;
+      width: 8.5in;
+      min-height: 11in;
+      padding: 0.5in 0.1875in;
+      margin: 1.5rem auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+      box-sizing: border-box;
+    }
+    .sheet-page .badge-card {
+      float: left;
+      width: 2.625in;
+      height: 1.0in;
+      margin-right: 0.125in;
+      border: 1px dashed #ccc;
+      box-sizing: border-box;
+      padding: 0.08in 0.12in;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
     .sheet-page .badge-card:nth-of-type(3n) { margin-right: 0; }
     .sheet-page::after { content: ""; display: table; clear: both; }
-    .badge-info { font-size: 11px; line-height: 1.05; overflow: hidden; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; }
-    .badge-name-last { font-size: 20px; font-weight: 900; line-height: 1.05; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
-    .badge-name-first { font-size: 16px; font-weight: 700; line-height: 1.05; letter-spacing: -0.2px; margin-top: 1px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
+
+    .badge-info { 
+      font-size: 11px; 
+      line-height: 1.05; 
+      overflow: hidden; 
+      max-width: 1.68in; 
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .badge-name-last { 
+      font-size: 20px; 
+      font-weight: 900; 
+      line-height: 1.05; 
+      letter-spacing: -0.3px;
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      color: #000;
+    }
+    .badge-name-first { 
+      font-size: 16px; 
+      font-weight: 700; 
+      line-height: 1.05; 
+      letter-spacing: -0.2px;
+      margin-top: 1px;
+      margin-bottom: 2px; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      color: #2c3e50;
+    }
     .badge-tag-line { font-size: 11px; line-height: 1.05; }
-    .book-badge-info { font-size: 11px; line-height: 1.1; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-    .book-tag-row { display: flex; gap: 6px; align-items: center; font-size: 11px; font-weight: 800; color: #1d6fa5; margin-bottom: 2px; text-transform: uppercase; }
-    .book-tag-pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 1px 4px; border-radius: 3px; }
-    .book-title-line { font-size: 13px; font-weight: 800; color: #111; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .book-author-line { font-size: 11px; font-style: italic; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+    .book-badge-info {
+      font-size: 11px;
+      line-height: 1.1;
+      max-width: 1.68in;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .book-tag-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #1d6fa5;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+    }
+    .book-tag-pill {
+      background: #ebf5fb;
+      border: 1px solid #aed6f1;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .book-title-line {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .book-author-line {
+      font-size: 11px;
+      font-style: italic;
+      color: #555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
     .book-id-sub { font-size: 9px; color: #888; font-family: monospace; margin-top: 2px; }
+
     .badge-qr { width: 0.78in; height: 0.78in; flex-shrink: 0; margin-left: 2px; }
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
-    .toolbar-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
-    @media print { @page { size: 8.5in 11in; margin: 0; } html, body { width: 8.5in !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: transparent !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } header, nav, .no-print, input, button, select, h2, h3, h4, p, .toolbar-box, #scanToast, .modal-overlay { display: none !important; } .container, .view-card { max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important; } .sheet-page { width: 8.5in !important; height: 11in !important; max-height: 11in !important; box-sizing: border-box !important; padding: 0.5in 0.1875in !important; page-break-before: always !important; break-before: page !important; page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; overflow: hidden !important; display: block !important; box-shadow: none !important; margin: 0 !important; } .sheet-page:first-of-type { page-break-before: auto !important; break-before: auto !important; } .badge-card { float: left !important; width: 2.625in !important; height: 1.0in !important; max-height: 1.0in !important; margin: 0 !important; margin-right: 0.125in !important; padding: 0.08in 0.12in !important; border: none !important; box-sizing: border-box !important; display: flex !important; align-items: center !important; justify-content: space-between !important; overflow: hidden !important; } .badge-card:nth-of-type(3n) { margin-right: 0 !important; } .badge-spacer { visibility: hidden !important; border: none !important; height: 1.0in !important; width: 2.625in !important; } .badge-qr { width: 0.78in !important; height: 0.78in !important; } }
-    .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; margin-top: 2px; border: 1px solid #2c3e50; color: #2c3e50; background: #f0f4f8; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .center-sticker-tag.camarillo { border-color: #1a5276; color: #1a5276; background: #ebf5fb; }
-    .center-sticker-tag.thousand-oaks { border-color: #0e6251; color: #0e6251; background: #e8f8f5; }
+
+    .toolbar-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    @media print {
+      @page { size: 8.5in 11in; margin: 0; }
+      html, body {
+        width: 8.5in !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      header, nav, .no-print, input, button, select, h2, h3, h4, p, .toolbar-box, #scanToast, .modal-overlay {
+        display: none !important;
+      }
+      .container, .view-card {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+      }
+      .sheet-page {
+        width: 8.5in !important;
+        height: 11in !important;
+        max-height: 11in !important;
+        box-sizing: border-box !important;
+        padding: 0.5in 0.1875in !important;
+        page-break-before: always !important;
+        break-before: page !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+        display: block !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+      .sheet-page:first-of-type {
+        page-break-before: auto !important;
+        break-before: auto !important;
+      }
+      .badge-card {
+        float: left !important;
+        width: 2.625in !important;
+        height: 1.0in !important;
+        max-height: 1.0in !important;
+        margin: 0 !important;
+        margin-right: 0.125in !important;
+        padding: 0.08in 0.12in !important;
+        border: none !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        overflow: hidden !important;
+      }
+      .badge-card:nth-of-type(3n) { margin-right: 0 !important; }
+      .badge-spacer { visibility: hidden !important; border: none !important; height: 1.0in !important; width: 2.625in !important; }
+      .badge-qr { width: 0.78in !important; height: 0.78in !important; }
+    }
+  
+  .center-sticker-tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-top: 2px;
+    border: 1px solid #2c3e50;
+    color: #2c3e50;
+    background: #f0f4f8;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .center-sticker-tag.camarillo {
+    border-color: #1a5276;
+    color: #1a5276;
+    background: #ebf5fb;
+  }
+  .center-sticker-tag.thousand-oaks {
+    border-color: #0e6251;
+    color: #0e6251;
+    background: #e8f8f5;
+  }
   </style>
 </head>
 <body>
 
-<div id="scanToast"><span id="toastIcon" style="font-size: 1.5rem;"></span><span id="toastMsg"></span></div>
+<!-- Scan Notification Toast Banner -->
+<div id="scanToast">
+  <span id="toastIcon" style="font-size: 1.5rem;"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- Student Reading History Modal -->
 <div id="readingHistoryModal" class="modal-overlay" onclick="closeReadingHistoryModal(event)">
   <div class="modal-card" onclick="event.stopPropagation()">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 0.75rem;">
       <h3 style="margin: 0;" id="modalStudentName">Student Reading History</h3>
       <button class="btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="closeReadingHistoryModal()">✕ Close</button>
     </div>
+    
     <div style="margin-top: 1rem;">
       <h4 style="margin: 0 0 0.5rem 0; color: #2980b9;">Currently Checked Out</h4>
       <div id="modalCurrentBooks" style="font-size: 0.9rem; color: #555; margin-bottom: 1.25rem;">None</div>
+
       <h4 style="margin: 0 0 0.5rem 0; color: #27ae60;">Past Returned Books</h4>
       <div id="modalPastBooks" style="font-size: 0.9rem;"></div>
     </div>
@@ -91,7 +407,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.21</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.36</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -104,11 +420,21 @@
 </header>
 
 <div class="container">
+
+  <!-- KIOSK TAB -->
   <div id="kiosk" class="tab-content active">
     <div class="view-card no-print">
       <h2>Scan In / Scan Out</h2>
       <div style="display: flex; gap: 0.5rem; max-width: 550px;">
-        <input type="text" id="scanInput" list="globalEntityDatalist" placeholder="Scan barcode or type name / ID..." oninput="handleDatalistSelection(this, 'kiosk')" autocomplete="off" autofocus />
+        <input 
+          type="text" 
+          id="scanInput" 
+          list="globalEntityDatalist" 
+          placeholder="Scan barcode or type name / ID..." 
+          oninput="handleDatalistSelection(this, 'kiosk')" 
+          autocomplete="off"
+          autofocus 
+        />
         <datalist id="globalEntityDatalist"></datalist>
         <button class="btn-action" onclick="handleScan()">Submit</button>
       </div>
@@ -119,23 +445,36 @@
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <h3 style="margin: 0;">Students Currently In Center</h3>
+          
           <select id="activeSubjectFilter" class="no-print" onchange="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; font-weight: bold;">
             <option value="ALL">All Subjects (0)</option>
             <option value="MATH">Math Only (0)</option>
             <option value="READING">Reading Only (0)</option>
             <option value="DUAL">Math &amp; Reading (0)</option>
           </select>
+
           <input type="text" id="activeSearchInput" class="no-print" placeholder="Search name or ID..." oninput="renderActiveStudentsTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 4px; width: 170px;" />
         </div>
+
         <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <input type="date" id="studentExportStart" /><span>to</span><input type="date" id="studentExportEnd" />
+          <input type="date" id="studentExportStart" />
+          <span>to</span>
+          <input type="date" id="studentExportEnd" />
           <button class="btn-action" style="font-size: 13px;" onclick="downloadStudentCSV()">⬇ Export Attendance CSV</button>
           <button class="btn-action" style="font-size: 13px; background: #34495e;" onclick="toggleStudentLogsPanel()">📋 Manage Past Logs</button>
         </div>
       </div>
+
       <table id="activeStudentsTable">
         <thead>
-          <tr><th>Name (Click for Books)</th><th>Subject</th><th>Check-In Time</th><th>Time in Center &amp; Progress</th><th>Timer Status</th><th class="no-print">Action</th></tr>
+          <tr>
+            <th>Name (Click for Books)</th>
+            <th>Subject</th>
+            <th>Check-In Time</th>
+            <th>Time in Center &amp; Progress</th>
+            <th>Timer Status</th>
+            <th class="no-print">Action</th>
+          </tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -143,20 +482,35 @@
 
     <div id="studentLogsPanel" class="view-card no-print" style="display: none; border-left: 4px solid var(--primary);">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-        <div><h3 style="margin: 0;">Past Attendance Logs</h3></div>
+        <div>
+          <h3 style="margin: 0;">Past Attendance Logs</h3>
+          <p style="margin: 3px 0 0 0; color: #666; font-size: 0.85rem;">View, correct check-in/out times, or remove incorrect records.</p>
+        </div>
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <input type="text" id="logFilterSearch" placeholder="Filter by name/ID..." oninput="filterStudentLogsLocal()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; width: 170px;" />
           <button class="btn-action" style="font-size: 12px; padding: 4px 8px;" onclick="loadStudentLogs()">Refresh</button>
           <button class="btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="toggleStudentLogsPanel(false)">Close Panel</button>
         </div>
       </div>
+
       <table id="studentLogsTable" style="margin-top: 1rem;">
-        <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Check In</th><th>Check Out</th><th>Duration</th><th>Actions</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Student</th>
+            <th>Subject</th>
+            <th>Check In</th>
+            <th>Check Out</th>
+            <th>Duration</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
         <tbody></tbody>
       </table>
     </div>
   </div>
 
+  <!-- LOBBY BOARD TAB -->
   <div id="lobby" class="tab-content">
     <div class="view-card">
       <h2 style="color: var(--secondary);">Ready For Pickup</h2>
@@ -164,16 +518,30 @@
     </div>
     <div class="view-card">
       <h2>Currently Studying</h2>
-      <table id="studyingTable"><thead><tr><th>Student</th><th>Seat</th><th>Subject</th></tr></thead><tbody></tbody></table>
+      <table id="studyingTable">
+        <thead>
+          <tr><th>Student</th><th>Seat</th><th>Subject</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
+  <!-- STUDENT BADGES & PRINTING TAB -->
   <div id="badges" class="tab-content">
     <div class="view-card no-print">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <div><h2>Student Badges</h2></div>
-        <div><input type="text" id="badgeSearch" placeholder="Search by name or ID..." oninput="filterBadges()" /></div>
+        <div>
+          <h2>Student Badges</h2>
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+            Select individual students via checkboxes to print replacement badges without reprinting full sheets.
+          </p>
+        </div>
+        <div>
+          <input type="text" id="badgeSearch" placeholder="Search by name or ID..." oninput="filterBadges()" />
+        </div>
       </div>
+
       <div class="toolbar-box">
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
           <label for="startSlotSelect" style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
@@ -183,56 +551,99 @@
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn-action" style="font-size: 13px;" onclick="selectAllStudents(true)">Select All</button>
           <button class="btn-danger" style="font-size: 13px;" onclick="selectAllStudents(false)">Clear Selection</button>
-          <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedBadges()">🖨️ Print Selected (<span id="selectedCount">0</span>)</button>
+          <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedBadges()">
+            🖨️ Print Selected (<span id="selectedCount">0</span>)
+          </button>
           <button class="btn-action" style="font-size: 13px;" onclick="printAllBadges()">Print All Sheet</button>
         </div>
       </div>
+
       <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
         <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
           <div style="display: flex; gap: 0.25rem; align-items: center;">
             <input type="text" id="newStdId" placeholder="Official Kumon ID" style="width: 170px;" />
-            <button type="button" class="btn-warning" onclick="generateStudentTempId()" title="Generate temporary ID" style="padding: 0.6rem 0.75rem; font-size: 12px; font-weight: bold;">⚡ Auto-Gen Temp ID</button>
+            <button type="button" class="btn-warning" onclick="generateStudentTempId()" title="Generate temporary ID" style="padding: 0.6rem 0.75rem; font-size: 12px; font-weight: bold;">
+              ⚡ Auto-Gen Temp ID
+            </button>
           </div>
           <input type="text" id="newStdFirst" placeholder="First Name" />
           <input type="text" id="newStdLast" placeholder="Last Name" />
-          <select id="newStdSub"><option value="Math">Math (30m target)</option><option value="Reading">Reading (30m target)</option><option value="Math & Reading">Math & Reading (60m target)</option></select>
+          <select id="newStdSub">
+            <option value="Math">Math (30m target)</option>
+            <option value="Reading">Reading (30m target)</option>
+            <option value="Math & Reading">Math & Reading (60m target)</option>
+          </select>
           <input type="text" id="newStdPhone" placeholder="Parent Phone (optional)" />
           <button class="btn-success" onclick="addStudent()">Save Student</button>
         </div>
       </div>
     </div>
+
     <div id="badgeContainer"></div>
   </div>
 
+  <!-- BOOK LIBRARY TAB -->
   <div id="books" class="tab-content">
     <div class="view-card no-print">
       <h2>Book Check-In / Check-Out Station</h2>
+      <p style="margin: 0 0 1rem 0; color: #666; font-size: 0.9rem;">
+        <strong>To Return:</strong> Scan the book barcode or type title.<br>
+        <strong>To Borrow:</strong> Type student name or scan badge, then scan/select book title.
+      </p>
+
       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-        <input type="text" id="bookScanInput" list="bookTitleDatalist" placeholder="Scan barcode or type title..." oninput="handleBookTitleSelection(this)" style="width: 250px;" autocomplete="off" autofocus />
+        <input 
+          type="text" 
+          id="bookScanInput" 
+          list="bookTitleDatalist" 
+          placeholder="Scan barcode or type title..." 
+          oninput="handleBookTitleSelection(this)" 
+          style="width: 250px;" 
+          autocomplete="off"
+          autofocus 
+        />
         <datalist id="bookTitleDatalist"></datalist>
 
-        <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
-          <label for="v131BookCenterFilter" style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
-          <select id="v131BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.21)</option>
-            <option value="Camarillo">Camarillo Only</option>
-            <option value="Thousand Oaks">Thousand Oaks Only</option>
-          </select>
-          <span id="bookCenterStatus" style="font-size: 0.85rem; color: #666;">Showing all books &amp; stickers</span>
+      <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
+        <label for="bookCenterFilter" style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
+        
+        <!-- V1.36 NEW DROPDOWN -->
+        <select id="bookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
+          <option value="all">View All Centers</option>
+          <option value="Camarillo">Camarillo Only</option>
+          <option value="Thousand Oaks">Thousand Oaks Only</option>
+        </select>
+        
+        <span id="bookCenterStatus" style="font-size: 0.85rem; color: #666;">Showing all books &amp; stickers</span>
 
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; border-left: 2px solid #d0d7de; padding-left: 0.75rem;">
-            <span id="bulkSelectedBadge" style="font-size: 0.85rem; font-weight: bold; color: #2c3e50;">0 selected</span>
-            <select id="bulkTargetCenter" style="padding: 5px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem;">
-              <option value="Camarillo">Move to Camarillo</option>
-              <option value="Thousand Oaks">Move to Thousand Oaks</option>
-            </select>
-            <button type="button" class="btn-action" style="font-size: 12px; padding: 6px 10px;" onclick="bulkUpdateBookCenter()">Move Selected</button>
-            <button type="button" class="btn-danger" style="font-size: 12px; padding: 6px 10px;" onclick="bulkDeleteBooks()">Delete Selected</button>
-          </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; border-left: 2px solid #d0d7de; padding-left: 0.75rem;">
+          <span id="bulkSelectedBadge" style="font-size: 0.85rem; font-weight: bold; color: #2c3e50;">0 selected</span>
+          <select id="bulkTargetCenter" style="padding: 5px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.85rem;">
+            <option value="Camarillo">Move to Camarillo</option>
+            <option value="Thousand Oaks">Move to Thousand Oaks</option>
+          </select>
+          <button type="button" class="btn-action" style="font-size: 12px; padding: 6px 10px;" onclick="bulkUpdateBookCenter()">Move Selected Books</button>
+          <button type="button" class="btn-danger" style="font-size: 12px; padding: 6px 10px; background: #c0392b; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="bulkDeleteBooks()">Delete Selected Books</button>
+
+          <button type="button" style="font-size: 12px; padding: 6px 10px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="deleteUnassignedBooks()">Delete Old Unassigned</button>
+          <button type="button" style="font-size: 12px; padding: 6px 10px; background: #7f8c8d; color: #fff; border: none; border-radius: 4px; cursor: pointer;" onclick="wipeAllBooks()">Wipe All Books</button>
+
         </div>
 
-        <input type="text" id="bookStudentScanInput" list="globalEntityDatalist" placeholder="Type student name or scan ID..." oninput="handleDatalistSelection(this, 'book')" style="width: 260px;" autocomplete="off" />
+      </div>
+
+
+        <input 
+          type="text" 
+          id="bookStudentScanInput" 
+          list="globalEntityDatalist" 
+          placeholder="Type student name or scan ID..." 
+          oninput="handleDatalistSelection(this, 'book')" 
+          style="width: 260px;" 
+          autocomplete="off"
+        />
+
         <button class="btn-action" onclick="handleBookScan()">Process Checkout / Return</button>
         <button class="btn-warning" onclick="clearBookInputs()">Clear</button>
       </div>
@@ -241,15 +652,41 @@
 
     <div class="view-card">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-        <div><h3 style="margin: 0;">Currently Borrowed Books (<span id="borrowedCount">0</span>)</h3></div>
+        <div>
+          <h3 style="margin: 0;">Currently Borrowed Books (<span id="borrowedCount">0</span>)</h3>
+        </div>
+
         <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <input type="text" id="borrowSearch" placeholder="Search borrowed..." oninput="renderBorrowedBooksTable()" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; width: 150px;" />
-          <button class="btn-warning" style="font-size: 12px; padding: 0.35rem 0.6rem;" onclick="filterOverdueBooksOnly()">⚠️ Overdue Only</button>
-          <button class="btn-action" style="font-size: 12px; background: #2c3e50;" onclick="downloadBookInventoryCSV()">⬇ Export Catalog</button>
+          <button class="btn-warning" style="font-size: 12px; padding: 0.35rem 0.6rem;" onclick="filterOverdueBooksOnly()">
+            ⚠️ Overdue Only
+          </button>
+          <button class="btn-action" style="font-size: 12px; background: #2c3e50;" onclick="downloadBookInventoryCSV()">
+            ⬇ Export Catalog CSV
+          </button>
+          <input type="date" id="bookExportStart" style="font-size: 12px; padding: 0.35rem 0.5rem;" />
+          <span style="font-size: 12px;">to</span>
+          <input type="date" id="bookExportEnd" style="font-size: 12px; padding: 0.35rem 0.5rem;" />
+          <button class="btn-action" style="font-size: 12px;" onclick="downloadBookHistoryCSV()">
+            ⬇ Export Borrow History CSV
+          </button>
         </div>
       </div>
+
       <table id="borrowedBooksTable">
-        <thead><tr><th>Title</th><th>Author</th><th>Level &amp; #</th><th>Barcode / ID</th><th>Borrowed By</th><th>Parent Phone</th><th>Date Out</th><th>Status</th><th class="no-print">Action</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Level &amp; #</th>
+            <th>Barcode / ID</th>
+            <th>Borrowed By</th>
+            <th>Parent Phone</th>
+            <th>Date Out</th>
+            <th>Status / Days Out</th>
+            <th class="no-print">Action</th>
+          </tr>
+        </thead>
         <tbody></tbody>
       </table>
     </div>
@@ -257,39 +694,52 @@
     <div class="view-card no-print">
       <h3>Register New Book</h3>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;">
-        <select id="registerBookCenterSelect" style="padding: 8px 10px; border-radius: 4px; border: 1px solid #94a3b8; font-weight: bold;"><option value="Thousand Oaks" selected>Thousand Oaks</option><option value="Camarillo">Camarillo</option></select>
-        <input type="text" id="newBookTitle" placeholder="Book Title *" style="width: 240px;" />
+        <select id="registerBookCenterSelect" style="padding: 8px 10px; border-radius: 4px; border: 1px solid #94a3b8; font-weight: bold; background: #f8fafc; color: #0f172a;" title="Assign Center for New Book"><option value="Thousand Oaks" selected>Thousand Oaks</option><option value="Camarillo">Camarillo</option></select>
+          <input type="text" id="newBookTitle" placeholder="Book Title *" style="width: 240px;" />
         <input type="text" id="newBookAuthor" placeholder="Author" style="width: 170px;" />
-        <input type="text" id="newBookLevel" placeholder="Level" style="width: 130px;" oninput="onLevelInputChanged()" />
-        <input type="text" id="newBookNumber" placeholder="Book #" style="width: 90px;" />
+        <input type="text" id="newBookLevel" placeholder="Level (e.g., 3A, B, RRL)" style="width: 130px;" oninput="onLevelInputChanged()" />
+        <input type="text" id="newBookNumber" placeholder="Book # (e.g., 14)" style="width: 90px;" />
+
         <div style="display: flex; gap: 0.25rem; align-items: center;">
           <input type="text" id="newBookId" placeholder="Book ID" style="width: 170px;" />
-          <button type="button" class="btn-warning" onclick="generateAutoBookId()" style="font-size: 11px; font-weight: bold; padding: 0.6rem 0.7rem;">⚡ Auto-Gen</button>
+          <button type="button" class="btn-warning" onclick="generateAutoBookId()" style="font-size: 11px; font-weight: bold; padding: 0.6rem 0.7rem;">
+            ⚡ Auto-Gen ID
+          </button>
         </div>
+
         <button class="btn-success" onclick="addNewBook()">Save to Library</button>
       </div>
     </div>
 
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
-        <h3>Book Label Stickers</h3>
+        <h3>Book Label Stickers (Avery 5160 / 8160)</h3>
+        <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+          Stickers include Level, Book #, Title, Author, ID, and scannable QR code.
+        </p>
+
         <div class="toolbar-box">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <label style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
+            <label for="startSlotSelectBook" style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
             <select id="startSlotSelectBook" style="width: 140px;" onchange="applyBookStickerOffset()"></select>
             <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetBookStickerOffset()">Reset Slot 1</button>
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <button class="btn-action" style="font-size: 13px;" onclick="selectAllBooks(true)">Select All</button>
             <button class="btn-danger" style="font-size: 13px;" onclick="selectAllBooks(false)">Clear Selection</button>
-            <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedBookBadges()">🖨️ Print Selected (<span id="selectedBookCount">0</span>)</button>
+            <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedBookBadges()">
+              🖨️ Print Selected (<span id="selectedBookCount">0</span>)
+            </button>
+            <button class="btn-action" style="font-size: 13px;" onclick="printAllBookBadges()">Print All Sheet</button>
           </div>
         </div>
       </div>
+
       <div id="bookBadgeContainer"></div>
     </div>
   </div>
 
+  <!-- STAFF & PAYROLL TAB -->
   <div id="staff" class="tab-content">
     <div class="view-card no-print">
       <h2>Staff Management</h2>
@@ -297,32 +747,52 @@
         <input type="text" id="newEmpId" placeholder="Employee ID" />
         <input type="text" id="newEmpFirst" placeholder="First Name" />
         <input type="text" id="newEmpLast" placeholder="Last Name" />
-        <input type="text" id="newEmpRole" placeholder="Role" />
+        <input type="text" id="newEmpRole" placeholder="Role (e.g., Assistant)" />
         <button class="btn-success" onclick="addEmployee()">Add Staff</button>
       </div>
-      <table id="staffRosterTable"><thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead><tbody></tbody></table>
+
+      <table id="staffRosterTable">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Role</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
     <div class="view-card no-print">
       <h3>Staff Currently on Duty</h3>
-      <table id="activeStaffTable"><thead><tr><th>Name</th><th>Role</th><th>Clocked In At</th><th>Time on Duty</th><th>Action</th></tr></thead><tbody></tbody></table>
+      <table id="activeStaffTable">
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Clocked In At</th><th>Time on Duty</th><th>Action</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
         <h3>Staff ID Badges</h3>
+        <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+          Select staff members via checkboxes to batch print badges onto Avery sheets.
+        </p>
+
         <div class="toolbar-box">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <label style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
+            <label for="startSlotSelectStaff" style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
             <select id="startSlotSelectStaff" style="width: 140px;" onchange="applyStaffStickerOffset()"></select>
+            <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetStaffStickerOffset()">Reset Slot 1</button>
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <button class="btn-action" style="font-size: 13px;" onclick="selectAllStaff(true)">Select All</button>
             <button class="btn-danger" style="font-size: 13px;" onclick="selectAllStaff(false)">Clear Selection</button>
-            <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedStaffBadges()">🖨️ Print Selected (<span id="selectedStaffCount">0</span>)</button>
+            <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedStaffBadges()">
+              🖨️ Print Selected (<span id="selectedStaffCount">0</span>)
+            </button>
+            <button class="btn-action" style="font-size: 13px;" onclick="printAllStaffBadges()">Print All Sheet</button>
           </div>
         </div>
       </div>
+
       <div id="staffBadgeContainer"></div>
     </div>
 
@@ -330,56 +800,89 @@
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
         <h2>Payroll Summary</h2>
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <input type="date" id="staffExportStart" /><span>to</span><input type="date" id="staffExportEnd" />
+          <input type="date" id="staffExportStart" />
+          <span>to</span>
+          <input type="date" id="staffExportEnd" />
           <button class="btn-action" style="font-size: 13px;" onclick="downloadStaffCSV()">⬇ Export Payroll CSV</button>
           <button class="btn-danger" style="font-size: 13px;" onclick="resetPayroll()">Reset Cycle</button>
         </div>
       </div>
-      <table id="payrollTable"><thead><tr><th>Name</th><th>Role</th><th>Total Shifts</th><th>Total Hours Worked</th><th>Actions</th></tr></thead><tbody></tbody></table>
-      
+      <table id="payrollTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Total Shifts</th>
+            <th>Total Hours Worked</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
       <div id="shiftDetailPanel" style="display: none; margin-top: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 1rem;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <h3 style="margin: 0;">Shift History: <span id="shiftDetailName" style="color: var(--primary);"></span></h3>
-          <button class="btn-danger" style="font-size: 11px; padding: 3px 8px;" onclick="closeShiftHistory()">Close</button>
+          <button class="btn-danger" style="font-size: 11px; padding: 3px 8px;" onclick="closeShiftHistory()">Close History</button>
         </div>
         <table id="shiftDetailTable" style="margin-top: 0.75rem; background: white;">
-          <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours Worked</th><th>Actions</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th>Hours Worked</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
   </div>
 
+  <!-- IMPORT TAB -->
   <div id="import" class="tab-content">
     <div class="view-card no-print">
       <h2>Upload Student CSV Roster</h2>
+      <p>Ensure CSV headers include: <code>id</code>, <code>firstName</code>, <code>lastName</code>, and <code>subject</code>.</p>
       <input type="file" id="csvFileInput" accept=".csv" />
-      <button class="btn-action" onclick="uploadCSV()">Upload Roster</button>
+      <button class="btn-action" onclick="uploadCSV()">Upload to MongoDB Atlas</button>
       <div id="uploadStatus" style="margin-top: 1rem; font-weight: bold;"></div>
     </div>
 
     <div class="view-card no-print" style="margin-top: 1.5rem;">
       <h2>Upload Book CSV Inventory</h2>
-      <div style="margin-bottom: 8px;"><label style="font-weight:bold; margin-right:6px;">Target Center:</label><select id="bookCsvCenter" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"><option value="Camarillo">Camarillo</option><option value="Thousand Oaks" selected>Thousand Oaks</option></select></div>
+      <div style="margin-bottom: 8px;"><label style="font-weight:bold; margin-right:6px;">Target Center for CSV Books:</label><select id="bookCsvCenter" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"><option value="Camarillo">Camarillo</option><option value="Thousand Oaks" selected>Thousand Oaks</option></select></div>
+      <p>Accepted column headers: <code>Title</code>, <code>Author</code>, <code>Level</code>, <code>Number</code>, <code>Center</code>.</p>
       <input type="file" id="bookCsvFileInput" accept=".csv" />
-      <button class="btn-action" onclick="uploadBookCSV()">Upload Books</button>
+      <button class="btn-action" onclick="uploadBookCSV()">Upload Books to Library</button>
       <div id="bookUploadStatus" style="margin-top: 1rem; font-weight: bold;"></div>
     </div>
   </div>
 
+  <!-- ANALYTICS & PAYROLL TAB -->
   <div id="analytics" class="tab-content">
     <div class="view-card no-print">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <div><h2>Staff Payroll Export</h2></div>
+        <div>
+          <h2>Staff Payroll Export (By Pay Period)</h2>
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+            Export aggregated staff shifts, total hours, and estimated gross pay to CSV.
+          </p>
+        </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn-action" style="font-size: 12px; background: #34495e;" onclick="setPayPeriod('firstHalf')">1st – 15th</button>
-          <button class="btn-action" style="font-size: 12px; background: #34495e;" onclick="setPayPeriod('secondHalf')">16th – EOM</button>
+          <button class="btn-action" style="font-size: 12px; background: #34495e;" onclick="setPayPeriod('secondHalf')">16th – End of Month</button>
         </div>
       </div>
+
       <div class="toolbar-box" style="margin-top: 1rem;">
         <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
           <label style="font-weight: bold; font-size: 0.9rem;">Pay Period:</label>
-          <input type="date" id="payrollStart" /><span>to</span><input type="date" id="payrollEnd" />
+          <input type="date" id="payrollStart" />
+          <span>to</span>
+          <input type="date" id="payrollEnd" />
           <label style="font-weight: bold; font-size: 0.9rem; margin-left: 0.5rem;">Default Rate ($/hr):</label>
           <input type="number" id="payrollRate" value="16.50" step="0.50" style="width: 90px;" />
           <button class="btn-success" style="font-weight: bold;" onclick="exportPayrollCSV()">⬇ Download Payroll CSV</button>
@@ -389,7 +892,12 @@
 
     <div class="view-card">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <div><h2>Traffic Analytics</h2></div>
+        <div>
+          <h2>Center Peak-Hour Traffic Analytics</h2>
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 0.9rem;">
+            Compare student attendance volume against staff coverage by hour.
+          </p>
+        </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <label style="font-size: 0.9rem; font-weight: bold;">Lookback:</label>
           <select id="analyticsDays" onchange="loadTrafficAnalytics()" style="font-size: 0.85rem; padding: 0.4rem;">
@@ -397,168 +905,397 @@
             <option value="14" selected>Last 14 Days</option>
             <option value="30">Last 30 Days</option>
           </select>
+          <button class="btn-action" style="font-size: 12px; padding: 0.4rem 0.8rem;" onclick="loadTrafficAnalytics()">Refresh</button>
         </div>
       </div>
+
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
         <div style="background: #ebf5fb; border-left: 4px solid #2980b9; padding: 1rem; border-radius: 6px;">
-          <div style="font-size: 0.85rem; color: #1d6fa5; font-weight: bold;">Total Visits</div>
+          <div style="font-size: 0.85rem; color: #1d6fa5; font-weight: bold;">Total Student Visits</div>
           <div id="kpiVisits" style="font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 4px;">--</div>
         </div>
         <div style="background: #e8f8f0; border-left: 4px solid #27ae60; padding: 1rem; border-radius: 6px;">
-          <div style="font-size: 0.85rem; color: #1e8449; font-weight: bold;">Avg Stay</div>
+          <div style="font-size: 0.85rem; color: #1e8449; font-weight: bold;">Avg Student Stay</div>
           <div id="kpiDuration" style="font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 4px;">-- mins</div>
         </div>
+        <div style="background: #fef5e7; border-left: 4px solid #e67e22; padding: 1rem; border-radius: 6px;">
+          <div style="font-size: 0.85rem; color: #d35400; font-weight: bold;">Total Staff Shifts</div>
+          <div id="kpiShifts" style="font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 4px;">--</div>
+        </div>
       </div>
-      <h3 style="margin: 1.5rem 0 0.5rem 0;">Hourly Traffic</h3>
+
+      <h3 style="margin: 1.5rem 0 0.5rem 0;">Hourly Traffic Distribution</h3>
       <div id="trafficChart" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;"></div>
     </div>
   </div>
+
 </div>
 
 <script>
-  let allStudents = []; let allStaff = []; let allBooksList = [];
-  let currentActiveStudents = []; let loadedStudentLogs = [];
-  let currentStartSlot = 1; let currentStaffStartSlot = 1; let currentBookStartSlot = 1;
-  const selectedStudentIds = new Set(); const selectedStaffIds = new Set(); const selectedBookIds = new Set();
-  let activeShiftEmployeeId = null; let activeShiftEmployeeName = ''; let toastTimeout = null;
+  let allStudents = [];
+  let allStaff = [];
+  let allBooksList = [];
+  let currentActiveStudents = [];
+  let loadedStudentLogs = [];
+
+  let currentStartSlot = 1;
+  let currentStaffStartSlot = 1;
+  let currentBookStartSlot = 1;
+
+  const selectedStudentIds = new Set();
+  const selectedStaffIds = new Set();
+  const selectedBookIds = new Set();
+
+  let activeShiftEmployeeId = null;
+  let activeShiftEmployeeName = '';
+  let toastTimeout = null;
 
   function showScanToast(type, message) {
     const toast = document.getElementById('scanToast');
     const icon = document.getElementById('toastIcon');
     const msg = document.getElementById('toastMsg');
     if (!toast) return;
+
     if (toastTimeout) clearTimeout(toastTimeout);
+
     toast.className = '';
-    if (type === 'success') { toast.classList.add('toast-success', 'toast-show'); icon.textContent = '✓'; }
-    else { toast.classList.add('toast-error', 'toast-show'); icon.textContent = '⚠️'; }
+    if (type === 'success') {
+      toast.classList.add('toast-success', 'toast-show');
+      icon.textContent = '✓';
+    } else {
+      toast.classList.add('toast-error', 'toast-show');
+      icon.textContent = '⚠️';
+    }
     msg.textContent = message;
-    toastTimeout = setTimeout(() => { toast.classList.remove('toast-show'); }, 3500);
+
+    toastTimeout = setTimeout(() => {
+      toast.classList.remove('toast-show');
+    }, 3500);
   }
 
   function playAudioTone(type) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator(); const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
       if (type === 'success') {
         osc.frequency.setValueAtTime(587.33, ctx.currentTime);
         osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
         gain.gain.setValueAtTime(0.2, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        osc.start(); osc.stop(ctx.currentTime + 0.3);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
       } else {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(150, ctx.currentTime);
         gain.gain.setValueAtTime(0.3, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-        osc.start(); osc.stop(ctx.currentTime + 0.35);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
       }
     } catch (e) {}
   }
 
   window.addEventListener('beforeunload', (e) => {
-    if (currentActiveStudents.length > 0) { e.preventDefault(); e.returnValue = ''; }
+    if (currentActiveStudents.length > 0) {
+      e.preventDefault();
+      e.returnValue = 'Students are currently checked in. Are you sure you want to close the kiosk?';
+    }
   });
 
   (function initGlobalScanner() {
-    let scanBuffer = ''; let lastCharTime = 0;
+    let scanBuffer = '';
+    let lastCharTime = 0;
+    const SCANNER_MAX_INTERVAL_MS = 120;
+
     window.addEventListener('keydown', (e) => {
-      if (e.target && e.target.matches('input, select, textarea') && e.target.id !== 'scanInput' && e.target.id !== 'bookScanInput') return;
-      const now = Date.now();
-      if (now - lastCharTime > 120) scanBuffer = '';
-      lastCharTime = now;
-      if (e.key === 'Enter') {
-        const isBooks = document.getElementById('books').classList.contains('active');
-        const code = scanBuffer.trim() || (isBooks ? document.getElementById('bookScanInput').value : document.getElementById('scanInput').value).trim();
-        if (code.length >= 2) {
-          e.preventDefault();
-          scanBuffer = '';
-          if (isBooks) { document.getElementById('bookScanInput').value = code; handleBookScan(); }
-          else { switchTab('kiosk'); document.getElementById('scanInput').value = code; handleScan(); }
-        }
-        scanBuffer = ''; return;
+      if (e.target && e.target.matches('input, select, textarea') && 
+          e.target.id !== 'scanInput' && e.target.id !== 'bookScanInput') {
+        return;
       }
-      if (e.key.length === 1) scanBuffer += e.key;
+
+      const now = Date.now();
+      const interval = now - lastCharTime;
+      lastCharTime = now;
+
+      if (e.key === 'Enter') {
+        const booksActive = document.getElementById('books').classList.contains('active');
+        const scanInput = document.getElementById('scanInput');
+        const bookScanInput = document.getElementById('bookScanInput');
+
+        if (booksActive) {
+          const codeToSubmit = scanBuffer.trim() || (bookScanInput ? bookScanInput.value.trim() : '');
+          if (codeToSubmit.length >= 2) {
+            e.preventDefault();
+            scanBuffer = '';
+            if (bookScanInput) bookScanInput.value = codeToSubmit;
+            handleBookScan();
+            return;
+          }
+        } else {
+          const codeToSubmit = scanBuffer.trim() || (scanInput ? scanInput.value.trim() : '');
+          if (codeToSubmit.length >= 2) {
+            e.preventDefault();
+            scanBuffer = '';
+            switchTab('kiosk');
+            if (scanInput) scanInput.value = codeToSubmit;
+            handleScan();
+            return;
+          }
+        }
+        scanBuffer = '';
+        return;
+      }
+
+      if (e.key.length > 1) return;
+      if (interval > SCANNER_MAX_INTERVAL_MS) scanBuffer = '';
+      scanBuffer += e.key;
     });
   })();
 
   function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
-    document.getElementById(tabId)?.classList.add('active');
-    document.querySelectorAll('nav button').forEach(btn => { if (btn.getAttribute('onclick')?.includes(tabId)) btn.classList.add('active'); });
-    if (tabId === 'kiosk') { refreshActive(); document.getElementById('scanInput')?.focus(); }
+
+    const targetView = document.getElementById(tabId);
+    if (targetView) targetView.classList.add('active');
+
+    document.querySelectorAll('nav button').forEach(btn => {
+      if (btn.getAttribute('onclick')?.includes(`'${tabId}'`)) {
+        btn.classList.add('active');
+      }
+    });
+
+    if (tabId === 'kiosk') {
+      refreshActive();
+      const scanInput = document.getElementById('scanInput');
+      if (scanInput && document.activeElement.tagName !== 'INPUT') {
+        scanInput.focus();
+      }
+    }
     if (tabId === 'lobby') refreshLobby();
     if (tabId === 'badges') loadBadges();
     if (tabId === 'books') loadBooks();
     if (tabId === 'staff') loadStaff();
-    if (tabId === 'analytics') { setPayPeriod('firstHalf'); loadTrafficAnalytics(); }
   }
 
-  function formatSubjectBadge(sub) {
-    const l = (sub || '').toLowerCase();
-    if (l.includes('&') || l.includes('and') || (l.includes('math') && l.includes('read'))) return `<span style="color: #1d6fa5 !important; font-weight: bold;">Math</span> &amp; <span style="color: #d93829 !important; font-weight: bold;">Reading</span>`;
-    return l.includes('read') ? `<span style="color: #d93829 !important; font-weight: bold;">Reading</span>` : `<span style="color: #1d6fa5 !important; font-weight: bold;">Math</span>`;
+  function formatSubjectBadge(subject) {
+    const raw = (subject || 'Math').trim();
+    const lower = raw.toLowerCase();
+    const isDual = lower.includes('&') || lower.includes('and') || lower.includes(',') || (lower.includes('math') && lower.includes('reading'));
+
+    if (isDual) {
+      return `<span style="color: #1d6fa5 !important; font-weight: bold;">Math</span> &amp; <span style="color: #d93829 !important; font-weight: bold;">Reading</span>`;
+    } else if (lower.includes('read')) {
+      return `<span style="color: #d93829 !important; font-weight: bold;">Reading</span>`;
+    } else {
+      return `<span style="color: #1d6fa5 !important; font-weight: bold;">Math</span>`;
+    }
   }
-  function formatSubjectPill(sub) {
-    const l = (sub || '').toLowerCase();
-    if (l.includes('&') || l.includes('and') || (l.includes('math') && l.includes('read'))) return `<span class="subj-dual-wrapper"><span class="subj-pill subj-math">Math</span><span class="subj-dual-separator">&amp;</span><span class="subj-pill subj-reading">Reading</span></span>`;
-    return l.includes('read') ? `<span class="subj-pill subj-reading">Reading</span>` : `<span class="subj-pill subj-math">Math</span>`;
+
+  function formatSubjectPill(subject) {
+    const raw = (subject || 'Math').trim();
+    const lower = raw.toLowerCase();
+    const isDual = lower.includes('&') || lower.includes('and') || lower.includes(',') || (lower.includes('math') && lower.includes('reading'));
+
+    if (isDual) {
+      return `
+        <span class="subj-dual-wrapper">
+          <span class="subj-pill subj-math">Math</span>
+          <span class="subj-dual-separator">&amp;</span>
+          <span class="subj-pill subj-reading">Reading</span>
+        </span>
+      `;
+    } else if (lower.includes('read')) {
+      return `<span class="subj-pill subj-reading">Reading</span>`;
+    } else {
+      return `<span class="subj-pill subj-math">Math</span>`;
+    }
   }
 
   function generateStudentTempId() {
-    const tempId = `TEMP-${Date.now().toString(36).toUpperCase().slice(-5)}-${Math.floor(10 + Math.random() * 90)}`;
+    const timePart = Date.now().toString(36).toUpperCase().slice(-5);
+    const randPart = Math.floor(10 + Math.random() * 90);
+    const tempId = `TEMP-${timePart}-${randPart}`;
     const idInput = document.getElementById('newStdId');
-    if (idInput) { idInput.value = tempId; idInput.style.backgroundColor = '#fef3c7'; }
+    if (idInput) {
+      idInput.value = tempId;
+      idInput.style.backgroundColor = '#fef3c7';
+    }
   }
 
-  function printSingleBadge(last, first, sub, qr) {
-    const w = window.open('', '_blank', 'width=450,height=300');
-    const isSub = sub.toLowerCase().includes('math') || sub.toLowerCase().includes('read');
-    w.document.write(`<html><head><style>@page { size: 2.625in 1in; margin: 0; } body { margin: 0; padding: 0.08in 0.12in; font-family: sans-serif; display: flex; align-items: center; justify-content: space-between; width: 2.625in; height: 1in; -webkit-print-color-adjust: exact !important; }</style></head><body><div style="line-height:1.05; max-width:1.68in;"><div style="font-size:20px; font-weight:900;">${last}</div><div style="font-size:16px; font-weight:700; color:#2c3e50; margin-bottom:2px;">${first}</div><div style="font-size:11px;">${isSub ? formatSubjectBadge(sub) : `<span style="color:#27ae60;font-weight:bold;">${sub}</span>`}</div></div><img src="${qr}" style="width:0.78in;height:0.78in;"/><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}<\/script></body></html>`);
-    w.document.close();
+  function printSingleBadge(lastName, firstName, labelSubtitle, qrDataUrl) {
+    const printWindow = window.open('', '_blank', 'width=450,height=300');
+    const isSubject = labelSubtitle.toLowerCase().includes('math') || labelSubtitle.toLowerCase().includes('read');
+    const subtitleHtml = isSubject 
+      ? formatSubjectBadge(labelSubtitle) 
+      : `<span style="color: #27ae60 !important; font-weight: bold;">${labelSubtitle}</span>`;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Badge - ${lastName}, ${firstName}</title>
+          <style>
+            @page { size: 2.625in 1in; margin: 0; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 0.08in 0.12in;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              width: 2.625in;
+              height: 1in;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .info { line-height: 1.05; font-size: 11px; color: #222; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; }
+            .last { font-size: 20px; font-weight: 900; line-height: 1.05; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
+            .first { font-size: 16px; font-weight: 700; line-height: 1.05; letter-spacing: -0.2px; margin-top: 1px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
+            .sub { font-size: 11px; line-height: 1.05; }
+            .qr { width: 0.78in; height: 0.78in; flex-shrink: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="info">
+            <div class="last">${lastName}</div>
+            <div class="first">${firstName}</div>
+            <div class="sub">${subtitleHtml}</div>
+          </div>
+          <img class="qr" src="${qrDataUrl}" alt="QR" />
+          <script>
+            window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   function refreshGlobalDatalist() {
-    const dl = document.getElementById('globalEntityDatalist');
-    if (!dl) return;
-    const opts = [];
-    (allStudents || []).forEach(s => opts.push(`<option value="${s.id}">${s.firstName} ${s.lastName} — ${s.id} (${s.subject})</option>`));
-    (allStaff || []).forEach(e => opts.push(`<option value="${e.id}">${e.firstName} ${e.lastName} — ${e.id} (Staff)</option>`));
-    dl.innerHTML = opts.join('');
+    const datalist = document.getElementById('globalEntityDatalist');
+    if (!datalist) return;
+
+    const options = [];
+    (allStudents || []).forEach(s => {
+      const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+      options.push(`<option value="${s.id}">${fullName} — ${s.id} (${s.subject || 'Student'})</option>`);
+    });
+    (allStaff || []).forEach(e => {
+      const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
+      options.push(`<option value="${e.id}">${fullName} — ${e.id} (Staff: ${e.role || 'Assistant'})</option>`);
+    });
+    datalist.innerHTML = options.join('');
   }
 
   function refreshBookTitleDatalist() {
-    const dl = document.getElementById('bookTitleDatalist');
-    if (dl) dl.innerHTML = (allBooksList || []).map(b => `<option value="${b.bookId}">${b.title} [${b.level}${b.bookNumber ? ' #'+b.bookNumber : ''}] — ${b.bookId}</option>`).join('');
+    const datalist = document.getElementById('bookTitleDatalist');
+    if (!datalist) return;
+
+    const options = (allBooksList || []).map(b => {
+      const numLabel = b.bookNumber ? ` #${b.bookNumber}` : '';
+      return `<option value="${b.bookId}">${b.title} [${b.level || 'GEN'}${numLabel}] — ${b.bookId}</option>`;
+    });
+    datalist.innerHTML = options.join('');
   }
 
-  function handleDatalistSelection(inputEl, ctx = 'kiosk') {
-    const v = inputEl.value.trim(); if (!v) return;
-    let id = null;
-    const m = (allStudents||[]).find(s=>s.id.toLowerCase()===v.toLowerCase()) || (allStaff||[]).find(e=>e.id.toLowerCase()===v.toLowerCase());
-    if (m) id = m.id;
-    if (!id) { const f = v.match(/—\s*([A-Za-z0-9_-]+)/); if (f) id = f[1].trim(); }
-    if (id) {
-      inputEl.value = id;
-      if (ctx === 'kiosk') { inputEl.blur(); handleScan(); }
-      else if (ctx === 'book') document.getElementById('bookScanInput')?.focus();
+  function handleDatalistSelection(inputEl, context = 'kiosk') {
+    const rawVal = inputEl.value.trim();
+    if (!rawVal) return;
+
+    let resolvedId = null;
+
+    const matchedById = 
+      (allStudents && allStudents.find(s => s.id.toLowerCase() === rawVal.toLowerCase())) ||
+      (allStaff && allStaff.find(e => e.id.toLowerCase() === rawVal.toLowerCase()));
+
+    if (matchedById) resolvedId = matchedById.id;
+
+    if (!resolvedId) {
+      const idFromFormat = rawVal.match(/—\s*([A-Za-z0-9_-]+)/);
+      if (idFromFormat && idFromFormat[1]) resolvedId = idFromFormat[1].trim();
+    }
+
+    if (!resolvedId) {
+      const foundStudent = (allStudents || []).find(s => `${s.firstName} ${s.lastName}`.toLowerCase() === rawVal.toLowerCase());
+      if (foundStudent) resolvedId = foundStudent.id;
+
+      const foundStaff = (allStaff || []).find(e => `${e.firstName} ${e.lastName}`.toLowerCase() === rawVal.toLowerCase());
+      if (foundStaff) resolvedId = foundStaff.id;
+    }
+
+    if (resolvedId) {
+      inputEl.value = resolvedId;
+      if (context === 'kiosk') {
+        inputEl.blur();
+        handleScan();
+      } else if (context === 'book') {
+        const bookBarcodeBox = document.getElementById('bookScanInput');
+        if (bookBarcodeBox && !bookBarcodeBox.value) bookBarcodeBox.focus();
+      }
     }
   }
 
   function handleBookTitleSelection(inputEl) {
-    const v = inputEl.value.trim(); if (!v) return;
-    const f = v.match(/—\s*([A-Za-z0-9_-]+)$/);
-    if (f) inputEl.value = f[1].trim();
+    const val = inputEl.value.trim();
+    if (!val) return;
+
+    const matchedBook = (allBooksList || []).find(b => b.bookId.toLowerCase() === val.toLowerCase());
+    if (matchedBook) return;
+
+    const idFromFormat = val.match(/—\s*([A-Za-z0-9_-]+)$/);
+    if (idFromFormat && idFromFormat[1]) {
+      inputEl.value = idFromFormat[1].trim();
+      return;
+    }
+
+    const foundByTitle = (allBooksList || []).find(b => b.title.toLowerCase() === val.toLowerCase());
+    if (foundByTitle) {
+      inputEl.value = foundByTitle.bookId;
+    }
   }
 
   async function handleScan() {
-    const inp = document.getElementById('scanInput'); const id = inp.value.trim(); if (!id) return;
-    const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scanId: id }) });
+    const scanInput = document.getElementById('scanInput');
+    const scanId = scanInput.value.trim();
+    if (!scanId) return;
+
+    const res = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scanId })
+    });
     const data = await res.json();
-    if (res.ok) { playAudioTone('success'); showScanToast('success', data.message); inp.value = ''; refreshActive(); if(document.getElementById('staff').classList.contains('active')) refreshActiveStaff(); }
-    else { playAudioTone('error'); showScanToast('error', data.message || 'Scan error'); }
+    const alertBox = document.getElementById('scanAlert');
+
+    if (res.ok) {
+      playAudioTone('success');
+      showScanToast('success', data.message);
+      if (alertBox) {
+        alertBox.style.color = '#27ae60';
+        alertBox.textContent = data.message;
+      }
+      scanInput.value = '';
+      refreshActive();
+      if (document.getElementById('staff').classList.contains('active')) refreshActiveStaff();
+    } else {
+      playAudioTone('error');
+      showScanToast('error', data.message || 'Scan error');
+      if (alertBox) {
+        alertBox.style.color = '#e74c3c';
+        alertBox.textContent = (data.message || 'Scan error') + ` (Received: "${scanId}")`;
+      }
+    }
   }
+
+  document.getElementById('scanInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleScan();
+  });
 
   async function refreshActive() {
     const res = await fetch('/api/active-students');
@@ -567,101 +1304,561 @@
   }
 
   function renderActiveStudentsTable() {
-    const tb = document.querySelector('#activeStudentsTable tbody'); if (!tb) return;
-    const sq = (document.getElementById('activeSearchInput')?.value || '').toLowerCase().trim();
-    const filter = document.getElementById('activeSubjectFilter')?.value || 'ALL';
-    
-    document.getElementById('activeSubjectFilter').querySelector('option[value="ALL"]').textContent = `All Subjects (${currentActiveStudents.length})`;
+    const filterSelect = document.getElementById('activeSubjectFilter');
+    const filterVal = filterSelect ? filterSelect.value : 'ALL';
+    const searchInput = document.getElementById('activeSearchInput');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const tbody = document.querySelector('#activeStudentsTable tbody');
+    if (!tbody) return;
 
-    const filtered = currentActiveStudents.filter(s => {
-      const sub = (s.subject || '').toLowerCase();
-      const isDual = sub.includes('&') || sub.includes('and') || (sub.includes('math') && sub.includes('read'));
-      if (filter === 'DUAL' && !isDual) return false;
-      if (filter === 'MATH' && (isDual || !sub.includes('math'))) return false;
-      if (filter === 'READING' && (isDual || !sub.includes('read'))) return false;
-      if (!sq) return true;
-      return `${s.firstName} ${s.lastName} ${s.studentId}`.toLowerCase().includes(sq);
+    let countTotal = currentActiveStudents.length;
+    let countMath = 0;
+    let countReading = 0;
+    let countDual = 0;
+
+    currentActiveStudents.forEach(s => {
+      const sub = (s.subject || '').toLowerCase().trim();
+      const isDual = sub.includes('&') || sub.includes('and') || sub.includes(',') || (sub.includes('math') && sub.includes('reading'));
+      if (isDual) countDual++;
+      else if (sub.includes('read')) countReading++;
+      else countMath++;
     });
 
-    if (!filtered.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;">No students.</td></tr>`; return; }
+    if (filterSelect) {
+      const optAll = filterSelect.querySelector('option[value="ALL"]');
+      const optMath = filterSelect.querySelector('option[value="MATH"]');
+      const optReading = filterSelect.querySelector('option[value="READING"]');
+      const optDual = filterSelect.querySelector('option[value="DUAL"]');
 
-    tb.innerHTML = filtered.map(s => {
-      const isDual = (s.subject||'').toLowerCase().includes('&');
-      const tm = isDual ? 60 : 30; const pct = Math.min(100, Math.round((s.minutesInCenter / tm) * 100));
-      let badge = 'time-ok'; let status = `Normal (${s.minutesInCenter}/${tm}m)`; let fill = 'fill-blue';
-      if (s.minutesInCenter > tm) { badge = 'time-alert'; status = `OVERTIME (+${s.minutesInCenter-tm}m)`; fill = 'fill-red'; }
-      else if (s.minutesInCenter >= tm-5) { badge = 'time-warn'; fill = 'fill-amber'; }
-      return `<tr>
-        <td><span class="student-link" onclick="openReadingHistoryModal('${s.studentId}','${s.firstName} ${s.lastName}')">${s.firstName} ${s.lastName}</span><div style="font-size:0.8rem;color:#7f8c8d;">ID: ${s.studentId}</div></td>
-        <td>${formatSubjectPill(s.subject)}</td><td>${s.checkInFormatted}</td>
-        <td><div><strong>${s.minutesInCenter} mins</strong> (${pct}%)</div><div class="progress-bar-container"><div class="progress-bar-fill ${fill}" style="width:${pct}%"></div></div></td>
-        <td><span class="time-badge ${badge}">${status}</span></td>
-        <td class="no-print"><button class="btn-action" style="font-size:12px;padding:4px 8px;" onclick="markReady('${s.studentId}')">Mark Ready</button> <button class="btn-danger" style="font-size:12px;padding:4px 8px;" onclick="manualCheckOut('${s.studentId}', '${s.firstName}')">Check Out</button></td>
-      </tr>`;
+      if (optAll) optAll.textContent = `All Subjects (${countTotal})`;
+      if (optMath) optMath.textContent = `Math Only (${countMath})`;
+      if (optReading) optReading.textContent = `Reading Only (${countReading})`;
+      if (optDual) optDual.textContent = `Math & Reading (${countDual})`;
+    }
+
+    const filtered = currentActiveStudents.filter(s => {
+      const sub = (s.subject || '').toLowerCase().trim();
+      const isDual = sub.includes('&') || sub.includes('and') || sub.includes(',') || (sub.includes('math') && sub.includes('reading'));
+
+      let matchesSubject = true;
+      if (filterVal === 'DUAL') matchesSubject = isDual;
+      else if (filterVal === 'MATH') matchesSubject = !isDual && sub.includes('math');
+      else if (filterVal === 'READING') matchesSubject = !isDual && sub.includes('read');
+
+      if (!matchesSubject) return false;
+      if (!searchQuery) return true;
+
+      const idMatch = (s.studentId || '').toLowerCase().includes(searchQuery);
+      const firstMatch = (s.firstName || '').toLowerCase().includes(searchQuery);
+      const lastMatch = (s.lastName || '').toLowerCase().includes(searchQuery);
+      const fullMatch = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase().includes(searchQuery);
+
+      return idMatch || firstMatch || lastMatch || fullMatch;
+    });
+
+    if (filtered.length === 0) {
+      const emptyMsg = searchQuery 
+        ? `No students matching "${searchQuery}".` 
+        : (filterVal === 'ALL' ? 'No students currently checked in.' : 'No students found in this subject category.');
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #888;">${emptyMsg}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(s => {
+      const minutes = s.minutesInCenter;
+      const sub = (s.subject || '').toLowerCase().trim();
+      const isDual = sub.includes('&') || sub.includes('and') || sub.includes(',') || (sub.includes('math') && sub.includes('reading'));
+
+      const targetMins = isDual ? 60 : 30;
+      const warnMins = isDual ? 50 : 25;
+
+      const percent = Math.min(100, Math.round((minutes / targetMins) * 100));
+
+      let badgeClass = 'time-ok';
+      let fillClass = 'fill-blue';
+      let statusText = `Normal (${minutes}/${targetMins}m)`;
+
+      if (minutes > targetMins) {
+        badgeClass = 'time-alert';
+        fillClass = 'fill-red';
+        statusText = `OVERTIME (+${minutes - targetMins}m)`;
+      } else if (minutes >= warnMins) {
+        badgeClass = 'time-warn';
+        fillClass = 'fill-amber';
+        statusText = `Finishing Soon (${minutes}/${targetMins}m)`;
+      }
+
+      const safeName = `${s.firstName} ${s.lastName}`.replace(/'/g, "\\'");
+
+      return `
+        <tr>
+          <td>
+            <span class="student-link" onclick="openReadingHistoryModal('${s.studentId}', '${safeName}')">
+              ${s.firstName} ${s.lastName}
+            </span>
+            <div style="font-size: 0.8rem; color: #7f8c8d;">ID: ${s.studentId}</div>
+          </td>
+          <td>${formatSubjectPill(s.subject)}</td>
+          <td>${s.checkInFormatted}</td>
+          <td>
+            <div><strong>${minutes} mins</strong> (${percent}%)</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill ${fillClass}" style="width: ${percent}%;"></div>
+            </div>
+          </td>
+          <td><span class="time-badge ${badgeClass}">${statusText}</span></td>
+          <td class="no-print" style="display: flex; gap: 0.4rem;">
+            <button class="btn-action" style="font-size: 12px; padding: 4px 8px;" onclick="markReady('${s.studentId}')">Mark Ready</button>
+            <button class="btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="manualCheckOut('${s.studentId}', '${(s.firstName || '').replace(/'/g, "\\'")} ${(s.lastName || '').replace(/'/g, "\\'")}')">Check Out</button>
+          </td>
+        </tr>
+      `;
     }).join('');
   }
 
-  async function openReadingHistoryModal(id, name) {
-    document.getElementById('modalStudentName').textContent = `Reading History: ${name}`;
-    document.getElementById('readingHistoryModal').style.display = 'flex';
-    document.getElementById('modalCurrentBooks').innerHTML = 'Loading...';
+  async function openReadingHistoryModal(studentId, studentName) {
+    const modal = document.getElementById('readingHistoryModal');
+    const nameHeader = document.getElementById('modalStudentName');
+    const curDiv = document.getElementById('modalCurrentBooks');
+    const pastDiv = document.getElementById('modalPastBooks');
+
+    nameHeader.textContent = `Reading History: ${studentName} (${studentId})`;
+    curDiv.innerHTML = 'Loading...';
+    pastDiv.innerHTML = 'Loading...';
+    modal.style.display = 'flex';
+
     try {
-      const res = await fetch(`/api/students/${encodeURIComponent(id)}/book-history`);
+      const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/book-history`);
       const data = await res.json();
-      document.getElementById('modalCurrentBooks').innerHTML = data.currentlyOut.length ? data.currentlyOut.map(b => `<div>📖 <strong>${b.title}</strong></div>`).join('') : 'None';
-      document.getElementById('modalPastBooks').innerHTML = data.pastLogs.length ? `<table style="font-size:0.85rem;"><tbody>${data.pastLogs.map(l => `<tr><td><strong>${l.title}</strong></td><td>${l.returnDate}</td></tr>`).join('')}</tbody></table>` : 'None';
-    } catch (e) { document.getElementById('modalCurrentBooks').innerHTML = 'Error'; }
+
+      if (data.currentlyOut.length === 0) {
+        curDiv.innerHTML = '<span style="color: #7f8c8d; font-style: italic;">No books currently checked out.</span>';
+      } else {
+        curDiv.innerHTML = data.currentlyOut.map(b => {
+          const checkDate = b.checkoutTime ? new Date(b.checkoutTime) : new Date();
+          const days = Math.max(1, Math.round((new Date() - checkDate) / (1000 * 60 * 60 * 24)));
+          return `
+            <div style="padding: 6px 0; border-bottom: 1px dashed #eee;">
+              📖 <strong>${b.title}</strong> [${b.level || 'GEN'} ${b.bookNumber ? '#' + b.bookNumber : ''}]
+              <br><span style="font-size: 0.8rem; color: #888;">Out since ${b.checkoutDate || '--'} (${days} day${days > 1 ? 's' : ''} ago)</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      if (data.pastLogs.length === 0) {
+        pastDiv.innerHTML = '<span style="color: #7f8c8d; font-style: italic;">No past returned books recorded yet.</span>';
+      } else {
+        pastDiv.innerHTML = `
+          <table style="font-size: 0.85rem; margin-top: 0.5rem;">
+            <thead>
+              <tr><th>Title</th><th>Level</th><th>Returned On</th><th>Days Held</th></tr>
+            </thead>
+            <tbody>
+              ${data.pastLogs.map(l => `
+                <tr>
+                  <td><strong>${l.title}</strong></td>
+                  <td>${l.level || 'GEN'}</td>
+                  <td>${l.returnDate}</td>
+                  <td>${l.daysOut} days</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+    } catch (e) {
+      curDiv.innerHTML = '<span style="color: #e74c3c;">Failed to load reading records.</span>';
+      pastDiv.innerHTML = '';
+    }
   }
-  function closeReadingHistoryModal() { document.getElementById('readingHistoryModal').style.display = 'none'; }
-  async function manualCheckOut(id, name) {
+
+  function closeReadingHistoryModal() {
+    const modal = document.getElementById('readingHistoryModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function manualCheckOut(studentId, name) {
     if (!confirm(`Check out ${name}?`)) return;
-    const res = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: id }) });
-    if (res.ok) { refreshActive(); refreshLobby(); }
+
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showScanToast('success', data.message);
+      refreshActive();
+      if (document.getElementById('lobby').classList.contains('active')) refreshLobby();
+    } else {
+      alert(`Error: ${data.message}`);
+    }
   }
-  async function markReady(id) { await fetch('/api/ready-pickup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: id }) }); refreshActive(); }
+
+  async function markReady(studentId) {
+    await fetch('/api/ready-pickup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId })
+    });
+    refreshActive();
+  }
+
   async function refreshLobby() {
-    const data = await (await fetch('/api/lobby-board')).json();
-    document.getElementById('pickupCards').innerHTML = data.readyForPickup.map(p => `<div style="background:#27ae60;color:white;padding:1rem;border-radius:6px;"><strong>${p.firstName} ${p.lastName}</strong></div>`).join('');
-    document.querySelector('#studyingTable tbody').innerHTML = data.studying.map(s => `<tr><td>${s.firstName} ${s.lastNameInitial}</td><td>${s.seatNumber}</td><td>${formatSubjectPill(s.subject)}</td></tr>`).join('');
+    const res = await fetch('/api/lobby-board');
+    const data = await res.json();
+
+    const pickupContainer = document.getElementById('pickupCards');
+    pickupContainer.innerHTML = data.readyForPickup.map(p => `
+      <div style="background: #27ae60; color: white; padding: 1rem 1.5rem; border-radius: 6px; font-size: 1.2rem;">
+        <strong>${p.firstName} ${p.lastName}</strong><br>
+        <span style="font-size: 0.9rem;">Ready at ${p.readyTime}</span>
+      </div>
+    `).join('');
+
+    const studyTbody = document.querySelector('#studyingTable tbody');
+    studyTbody.innerHTML = data.studying.map(s => `
+      <tr><td>${s.firstName} ${s.lastNameInitial}</td><td>${s.seatNumber}</td><td>${formatSubjectPill(s.subject)}</td></tr>
+    `).join('');
   }
-  function toggleStudentLogsPanel(show) { const p = document.getElementById('studentLogsPanel'); p.style.display = show === false ? 'none' : 'block'; if (p.style.display === 'block') loadStudentLogs(); }
+
+  function toggleStudentLogsPanel(forceState) {
+    const panel = document.getElementById('studentLogsPanel');
+    if (!panel) return;
+    const shouldShow = forceState !== undefined ? forceState : panel.style.display === 'none';
+    panel.style.display = shouldShow ? 'block' : 'none';
+    if (shouldShow) {
+      loadStudentLogs();
+      panel.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
   async function loadStudentLogs() {
-    const res = await fetch('/api/student-attendance-logs?limit=150');
-    loadedStudentLogs = await res.json();
-    renderStudentLogsTable(loadedStudentLogs);
+    const start = document.getElementById('studentExportStart')?.value || '';
+    const end = document.getElementById('studentExportEnd')?.value || '';
+    const tbody = document.querySelector('#studentLogsTable tbody');
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888;">Loading logs...</td></tr>`;
+    }
+
+    const params = new URLSearchParams();
+    if (start) params.append('startDate', start);
+    if (end) params.append('endDate', end);
+    params.append('limit', '150');
+
+    try {
+      const res = await fetch(`/api/student-attendance-logs?${params.toString()}`);
+      loadedStudentLogs = await res.json();
+      renderStudentLogsTable(loadedStudentLogs);
+    } catch (err) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #e74c3c;">Failed to load attendance logs.</td></tr>`;
+      }
+    }
   }
+
+  function filterStudentLogsLocal() {
+    const query = document.getElementById('logFilterSearch')?.value.toLowerCase().trim() || '';
+    if (!query) {
+      renderStudentLogsTable(loadedStudentLogs);
+      return;
+    }
+    const filtered = loadedStudentLogs.filter(l => 
+      (l.studentId && l.studentId.toLowerCase().includes(query)) ||
+      (l.firstName && l.firstName.toLowerCase().includes(query)) ||
+      (l.lastName && l.lastName.toLowerCase().includes(query)) ||
+      `${l.firstName || ''} ${l.lastName || ''}`.toLowerCase().includes(query)
+    );
+    renderStudentLogsTable(filtered);
+  }
+
   function renderStudentLogsTable(logs) {
-    const tb = document.querySelector('#studentLogsTable tbody');
-    if (!logs.length) { tb.innerHTML = `<tr><td colspan="7">No records.</td></tr>`; return; }
-    tb.innerHTML = logs.map(l => `<tr><td>${l.date}</td><td>${l.firstName} ${l.lastName}</td><td>${l.subject}</td><td>${l.checkIn}</td><td>${l.checkOut}</td><td>${l.durationMinutes}m</td><td><button class="btn-danger" style="font-size:11px;" onclick="deleteStudentLog('${l._id}')">Del</button></td></tr>`).join('');
+    const tbody = document.querySelector('#studentLogsTable tbody');
+    if (!tbody) return;
+
+    if (!logs || logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888;">No attendance records found for this period.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const safeName = `${l.firstName || ''} ${l.lastName || ''}`.replace(/'/g, "\\'");
+      const safeSub = (l.subject || 'Math').replace(/'/g, "\\'");
+      const safeIn = (l.checkIn || '').replace(/'/g, "\\'");
+      const safeOut = (l.checkOut || '').replace(/'/g, "\\'");
+
+      return `
+        <tr>
+          <td>${l.date || ''}</td>
+          <td><strong>${l.firstName || ''} ${l.lastName || ''}</strong> <span style="font-size: 0.8rem; color: #7f8c8d;">(${l.studentId || ''})</span></td>
+          <td>${formatSubjectPill(l.subject)}</td>
+          <td>${l.checkIn || '--'}</td>
+          <td>${l.checkOut || '--'}</td>
+          <td><strong>${l.durationMinutes || 0} mins</strong></td>
+          <td style="display: flex; gap: 0.35rem;">
+            <button class="btn-action" style="font-size: 11px; padding: 3px 6px;" onclick="editStudentLog('${l._id}', '${safeName}', '${l.date}', '${safeIn}', '${safeOut}', ${l.durationMinutes || 0}, '${safeSub}')">Edit</button>
+            <button class="btn-danger" style="font-size: 11px; padding: 3px 6px;" onclick="deleteStudentLog('${l._id}', '${safeName}')">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
-  async function deleteStudentLog(id) { if(confirm('Delete log?')){ await fetch(`/api/student-attendance-logs/${id}`,{method:'DELETE'}); loadStudentLogs(); } }
-  
+
+  async function editStudentLog(logId, studentName, currentDate, currentIn, currentOut, currentDuration, currentSubject) {
+    const newIn = prompt(`Update Check-In time for ${studentName}:`, currentIn);
+    if (newIn === null) return;
+
+    const newOut = prompt(`Update Check-Out time for ${studentName}:`, currentOut);
+    if (newOut === null) return;
+
+    const newMinsStr = prompt(`Update Duration in minutes:`, currentDuration);
+    if (newMinsStr === null) return;
+    const newMins = parseInt(newMinsStr, 10);
+    if (isNaN(newMins) || newMins < 0) return alert('Duration must be a positive number.');
+
+    const newDate = prompt(`Update Date (YYYY-MM-DD):`, currentDate);
+    if (newDate === null) return;
+
+    const newSub = prompt(`Update Subject (Math, Reading, Math & Reading):`, currentSubject);
+    if (newSub === null) return;
+
+    const res = await fetch(`/api/student-attendance-logs/${logId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        checkIn: newIn.trim(),
+        checkOut: newOut.trim(),
+        durationMinutes: newMins,
+        date: newDate.trim(),
+        subject: newSub.trim()
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      loadStudentLogs();
+    } else {
+      alert(`Error: ${data.message}`);
+    }
+  }
+
+  async function deleteStudentLog(logId, studentName) {
+    if (!confirm(`Permanently remove this attendance record for ${studentName}?`)) return;
+
+    const res = await fetch(`/api/student-attendance-logs/${logId}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (data.success) {
+      loadStudentLogs();
+    } else {
+      alert(`Error: ${data.message}`);
+    }
+  }
+
   function populateSlotDropdown() {
-    const sel = document.getElementById('startSlotSelect'); if (sel.children.length > 0) return;
-    for (let i=1; i<=30; i++) sel.innerHTML += `<option value="${i}">Slot ${i}</option>`;
+    const select = document.getElementById('startSlotSelect');
+    if (!select || select.children.length > 0) return;
+
+    for (let i = 1; i <= 30; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `Slot ${i} (R${Math.ceil(i / 3)}, C${((i - 1) % 3) + 1})`;
+      select.appendChild(opt);
+    }
   }
-  function applyStickerOffset() { currentStartSlot = parseInt(document.getElementById('startSlotSelect').value)||1; filterBadges(); }
-  function resetStickerOffset() { currentStartSlot = 1; document.getElementById('startSlotSelect').value = 1; filterBadges(); }
-  async function loadBadges() { allStudents = await (await fetch('/api/students-qr')).json(); populateSlotDropdown(); refreshGlobalDatalist(); renderBadges(allStudents); }
-  function toggleSelectStudent(id) { selectedStudentIds.has(id) ? selectedStudentIds.delete(id) : selectedStudentIds.add(id); document.getElementById('selectedCount').textContent = selectedStudentIds.size; }
-  function selectAllStudents(select) { select ? allStudents.forEach(s => selectedStudentIds.add(s.id)) : selectedStudentIds.clear(); renderBadges(allStudents); }
+
+  function applyStickerOffset() {
+    currentStartSlot = parseInt(document.getElementById('startSlotSelect').value, 10) || 1;
+    filterBadges();
+  }
+
+  function resetStickerOffset() {
+    currentStartSlot = 1;
+    const select = document.getElementById('startSlotSelect');
+    if (select) select.value = 1;
+    filterBadges();
+  }
+
+  async function loadBadges() {
+    const res = await fetch('/api/students-qr');
+    allStudents = await res.json();
+    populateSlotDropdown();
+    refreshGlobalDatalist();
+    renderBadges(allStudents);
+  }
+
+  function toggleSelectStudent(id) {
+    if (selectedStudentIds.has(id)) {
+      selectedStudentIds.delete(id);
+    } else {
+      selectedStudentIds.add(id);
+    }
+    const countEl = document.getElementById('selectedCount');
+    if (countEl) countEl.textContent = selectedStudentIds.size;
+  }
+
+  function selectAllStudents(select) {
+    if (select) {
+      allStudents.forEach(s => selectedStudentIds.add(s.id));
+    } else {
+      selectedStudentIds.clear();
+    }
+    renderBadges(allStudents);
+  }
+
   function renderBadges(list) {
-    const items = []; for (let i=1; i<currentStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
-    list.forEach(s => items.push(`<div class="badge-card"><div class="no-print" style="position:absolute;top:4px;right:4px;"><input type="checkbox" ${selectedStudentIds.has(s.id)?'checked':''} onchange="toggleSelectStudent('${s.id}')" /><button class="chip-btn" style="background:#e74c3c;" onclick="deleteStudent('${s.id}')">✕</button></div><div class="badge-info"><div class="badge-name-last">${s.lastName}</div><div class="badge-name-first">${s.firstName}</div><div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div></div><img class="badge-qr" src="${s.qrCode}" /></div>`));
-    const pages = []; for (let i=0; i<items.length; i+=30) pages.push(`<div class="sheet-page">${items.slice(i, i+30).join('')}</div>`);
-    document.getElementById('badgeContainer').innerHTML = pages.join('');
+    const container = document.getElementById('badgeContainer');
+    const items = [];
+
+    for (let i = 1; i < currentStartSlot; i++) {
+      items.push(`<div class="badge-card badge-spacer"></div>`);
+    }
+
+    list.forEach(s => {
+      const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+      const safeFull = fullName.replace(/'/g, "\\'");
+      const safeLast = (s.lastName || '').replace(/'/g, "\\'");
+      const safeFirst = (s.firstName || '').replace(/'/g, "\\'");
+      const safeSub = (s.subject || 'Math').replace(/'/g, "\\'");
+      const safePhone = (s.parentPhone || '').replace(/'/g, "\\'");
+      const isChecked = selectedStudentIds.has(s.id) ? 'checked' : '';
+
+      items.push(`
+        <div class="badge-card">
+          <div class="no-print" style="position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 4px;">
+            <input type="checkbox" ${isChecked} onchange="toggleSelectStudent('${s.id}')" title="Queue for batch printing" style="cursor: pointer; width: 16px; height: 16px;" />
+            <button class="chip-btn" style="background: #27ae60;" onclick="printSingleBadge('${safeLast}', '${safeFirst}', '${safeSub}', '${s.qrCode}')" title="Print this badge only">🖨️</button>
+            <button class="chip-btn" style="background: #2980b9;" onclick="editStudent('${s.id}', '${safeFirst}', '${safeLast}', '${safeSub}', '${safePhone}')" title="Edit student">✎</button>
+            <button class="chip-btn" style="background: #e74c3c;" onclick="deleteStudent('${s.id}', '${safeFull}')" title="Delete student">✕</button>
+          </div>
+          <div class="badge-info">
+            <div class="badge-name-last">${s.lastName || ''}</div>
+            <div class="badge-name-first">${s.firstName || ''}</div>
+            <div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div>
+          </div>
+          <img class="badge-qr" src="${s.qrCode}" alt="QR" />
+        </div>
+      `);
+    });
+
+    const pages = [];
+    for (let i = 0; i < items.length; i += 30) {
+      const chunk = items.slice(i, i + 30);
+      pages.push(`<div class="sheet-page">${chunk.join('')}</div>`);
+    }
+
+    container.innerHTML = pages.join('');
+    const countEl = document.getElementById('selectedCount');
+    if (countEl) countEl.textContent = selectedStudentIds.size;
   }
-  function filterBadges() { const q = document.getElementById('badgeSearch').value.toLowerCase(); renderBadges(allStudents.filter(s => `${s.firstName} ${s.lastName} ${s.id}`.toLowerCase().includes(q))); }
-  function printAllBadges() { window.print(); }
-  function printSelectedBadges() { renderBadges(allStudents.filter(s => selectedStudentIds.has(s.id))); window.print(); }
+
+  function filterBadges() {
+    const query = document.getElementById('badgeSearch').value.toLowerCase();
+    const filtered = allStudents.filter(s =>
+      s.id.toLowerCase().includes(query) ||
+      (s.firstName && s.firstName.toLowerCase().includes(query)) ||
+      (s.lastName && s.lastName.toLowerCase().includes(query))
+    );
+    renderBadges(filtered);
+  }
+
+  function printAllBadges() {
+    renderBadges(allStudents);
+    window.print();
+  }
+
+  function printSelectedBadges() {
+    if (selectedStudentIds.size === 0) {
+      return alert('Select at least one student checkbox before printing selected badges.');
+    }
+    const selectedList = allStudents.filter(s => selectedStudentIds.has(s.id));
+    renderBadges(selectedList);
+    window.print();
+  }
+
   async function addStudent() {
-    const data = { id: document.getElementById('newStdId').value.trim(), firstName: document.getElementById('newStdFirst').value.trim(), lastName: document.getElementById('newStdLast').value.trim(), subject: document.getElementById('newStdSub').value, isNewRegistration: true };
-    if (!data.firstName) return;
-    await fetch('/api/students', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    const idInput = document.getElementById('newStdId');
+    const id = idInput.value.trim();
+    const firstName = document.getElementById('newStdFirst').value.trim();
+    const lastName = document.getElementById('newStdLast').value.trim();
+    const subject = document.getElementById('newStdSub').value;
+    const parentPhone = document.getElementById('newStdPhone').value.trim();
+
+    if (!firstName) return alert('First Name is required.');
+
+    const res = await fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, firstName, lastName, subject, parentPhone, isNewRegistration: true })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return alert(data.message || 'Failed to register student.');
+    }
+
+    idInput.value = '';
+    idInput.style.backgroundColor = '';
+    document.getElementById('newStdFirst').value = '';
+    document.getElementById('newStdLast').value = '';
+    document.getElementById('newStdPhone').value = '';
+
+    if (data.student && data.student.id) {
+      selectedStudentIds.add(data.student.id);
+    }
     loadBadges();
   }
-  async function deleteStudent(id) { if(confirm('Delete?')) { await fetch(`/api/students/${id}`, {method:'DELETE'}); loadBadges(); } }
+
+  async function editStudent(id, currentFirst, currentLast, currentSub, currentPhone) {
+    const newFirst = prompt('Update First Name:', currentFirst);
+    if (newFirst === null) return;
+    const newLast = prompt('Update Last Name:', currentLast);
+    if (newLast === null) return;
+    const newSub = prompt('Update Subject (Math, Reading, Math & Reading):', currentSub);
+    if (newSub === null) return;
+    const newPhone = prompt('Update Parent Phone:', currentPhone);
+    if (newPhone === null) return;
+
+    let newId = id;
+    if (id.startsWith('TEMP-')) {
+      const promptId = prompt('Update Temporary ID to Official Student ID (or keep as is):', id);
+      if (promptId !== null && promptId.trim() !== '') newId = promptId.trim();
+    }
+
+    if (!newFirst.trim()) return alert('First name is required.');
+
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        newId,
+        firstName: newFirst.trim(),
+        lastName: newLast.trim(),
+        subject: newSub.trim() || 'Math',
+        parentPhone: newPhone.trim()
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      return alert(data.message || 'Failed to update student.');
+    }
+
+    if (newId !== id && selectedStudentIds.has(id)) {
+      selectedStudentIds.delete(id);
+      selectedStudentIds.add(newId);
+    }
+    loadBadges();
+  }
+
+  async function deleteStudent(id, name) {
+    if (!confirm(`Permanently remove ${name} (ID: ${id})?`)) return;
+    await fetch(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    selectedStudentIds.delete(id);
+    loadBadges();
+  }
 
   async function generateAutoBookId() {
     const data = await (await fetch(`/api/books/generate-id?level=${encodeURIComponent(document.getElementById('newBookLevel')?.value||'GEN')}`)).json();
@@ -670,24 +1867,24 @@
   function onLevelInputChanged() { const inp = document.getElementById('newBookId'); if(!inp.value || inp.value.startsWith('BK-')) generateAutoBookId(); }
 
   // ==============================================
-  // V1.31: BULLETPROOF DROPDOWN FILTER LOGIC
+  // V1.36: BULLETPROOF DROPDOWN FILTER LOGIC
   // ==============================================
-  window.__V131_ACTIVE_CENTER__ = 'all';
+  window.__V136_ACTIVE_CENTER__ = 'all';
 
   document.addEventListener('DOMContentLoaded', () => {
-    const newDropdown = document.getElementById('v131BookCenterFilter');
+    const newDropdown = document.getElementById('bookCenterFilter');
     if (newDropdown) {
       newDropdown.addEventListener('change', (e) => {
-        window.__V131_ACTIVE_CENTER__ = e.target.value;
-        console.log("v1.31 Drodown physically clicked. New value:", window.__V131_ACTIVE_CENTER__);
+        window.__V136_ACTIVE_CENTER__ = e.target.value;
+        console.log("v1.36 Drodown physically clicked. New value:", window.__V136_ACTIVE_CENTER__);
         loadBooks();
       });
     }
   });
 
   async function loadBooks() {
-    const centerFilter = window.__V131_ACTIVE_CENTER__;
-    console.log("v1.31 Fetching books for:", centerFilter);
+    const centerFilter = window.__V136_ACTIVE_CENTER__;
+    console.log("v1.36 Fetching books for:", centerFilter);
     try {
       const res = await fetch('/api/books-qr?center=' + encodeURIComponent(centerFilter));
       const rawBooks = await res.json();
@@ -702,7 +1899,7 @@
   function decorateBookDOM() {
     const statusEl = document.getElementById('bookCenterStatus');
     if (statusEl) {
-      const val = window.__V131_ACTIVE_CENTER__;
+      const val = window.__V136_ACTIVE_CENTER__;
       const label = val === 'all' ? 'All Centers' : val;
       statusEl.textContent = 'Showing ' + (allBooksList.length || 0) + ' ' + label + ' book(s) & stickers';
     }
@@ -798,186 +1995,36 @@
   async function deleteStaff(id) { if(confirm('Delete?')) { await fetch(`/api/employees/${id}`, {method:'DELETE'}); loadStaff(); } }
   
   async function uploadBookCSV() {
-  const file = document.getElementById('bookCsvFileInput').files[0]; 
-  if(!file) return alert('Please select a file first.');
-  const fd = new FormData(); 
-  fd.append('file', file); 
-  fd.append('center', document.getElementById('bookCsvCenter').value);
-  const statusEl = document.getElementById('bookUploadStatus');
-  statusEl.style.color = '#333';
-  statusEl.textContent = 'Uploading... (Check Console if this gets stuck)';
-  try {
-    const res = await fetch('/api/upload-books', { method: 'POST', body: fd });
-    const text = await res.text();
-    let data;
-    try { data = JSON.parse(text); } catch(e) { 
-      console.error("Raw server response:", text);
-      statusEl.style.color = '#e74c3c';
-      statusEl.textContent = "Server Crash (502). Check Console for raw HTML.";
-      return;
-    }
-    if (res.ok && data.success !== false) {
-      statusEl.style.color = '#27ae60';
-      statusEl.textContent = data.message || 'Upload successful!';
-      document.getElementById('bookCsvFileInput').value = '';
-      loadBooks();
-    } else {
-      console.error("Backend rejected CSV:", data);
-      statusEl.style.color = '#e74c3c';
-      statusEl.textContent = "Error: " + (data.message || data.error || 'Invalid CSV format.');
-    }
-  } catch (err) {
-    console.error("Network Error:", err);
-    statusEl.style.color = '#e74c3c';
-    statusEl.textContent = 'Network Error: ' + err.message;
-  }
-}
-
-  // ==========================================
-  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.21)
-  // ==========================================
-  window.getActiveCenterValue = function() {
-    // 1. Locate the dropdown that has our center names (bypassing ID typos)
-    const selects = Array.from(document.querySelectorAll('select'));
-    const filterSelect = selects.find(sel => 
-      sel.textContent.toLowerCase().includes('camarillo') && 
-      sel.textContent.toLowerCase().includes('thousand') &&
-      (!sel.id || !sel.id.toLowerCase().includes('register'))
-    );
-
-    if (filterSelect && filterSelect.selectedIndex >= 0) {
-      const opt = filterSelect.options[filterSelect.selectedIndex];
-      const text = (opt.textContent || '').toLowerCase();
-      const val = (filterSelect.value || '').toLowerCase();
-      
-      // 2. Read the visible TEXT of the dropdown option, completely ignoring broken value="" attributes!
-      if (text.includes('camarillo') || val === 'camarillo') return 'Camarillo';
-      if (text.includes('thousand') || val.includes('thousand')) return 'Thousand Oaks';
-      if (text.includes('unassigned') || val === 'unassigned') return 'Unassigned';
-    }
+    const file = document.getElementById('bookCsvFileInput').files[0]; if(!file) return alert("Select a CSV file first!");
+    const fd = new FormData(); fd.append('file', file); fd.append('center', document.getElementById('bookCsvCenter').value);
     
-    return 'all';
-  };
+    const statusEl = document.getElementById('bookUploadStatus');
+    statusEl.style.color = '#333';
+    statusEl.textContent = 'Uploading... (Check Console if stuck)';
 
-  window.onBookCenterFilterChange = function() {
-    if (typeof loadBooks === 'function') loadBooks();
-  };
-
-  if (!window._v121FetchHook) {
-    window._v121FetchHook = true;
-    const origFetch = window.fetch;
-    window.fetch = function() {
-      let args = Array.prototype.slice.call(arguments);
-      let url = args[0];
-      if (typeof url === 'string' && url.includes('/api/books-qr')) {
-        const centerVal = window.getActiveCenterValue();
-        url = url.split('?')[0] + '?center=' + encodeURIComponent(centerVal);
-        args[0] = url;
-        console.log('v1.21 Intercepted fetch! Requesting:', url);
+    try {
+      const res = await fetch('/api/upload-books', { method: 'POST', body: fd });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e) { 
+        statusEl.style.color = '#e74c3c';
+        statusEl.textContent = "Server Crash (502). Check Console.";
+        return;
       }
-      return origFetch.apply(this, args).then(res => {
-        if (typeof url === 'string' && url.includes('/api/books-qr')) {
-          const clone = res.clone();
-          clone.json().then(data => {
-            if (Array.isArray(data)) {
-              window.allBooksList = data;
-              setTimeout(() => {
-                if (typeof decorateBookDOM === 'function') decorateBookDOM();
-              }, 200);
-            }
-          }).catch(err => console.error(err));
-        }
-        return res;
-      });
-    };
+      if (res.ok && data.success !== false) {
+        statusEl.style.color = '#27ae60';
+        statusEl.textContent = data.message || 'Upload successful!';
+        document.getElementById('bookCsvFileInput').value = '';
+        loadBooks();
+      } else {
+        statusEl.style.color = '#e74c3c';
+        statusEl.textContent = "Error: " + (data.message || data.error || 'Invalid CSV format.');
+      }
+    } catch(err) {
+      statusEl.style.color = '#e74c3c';
+      statusEl.textContent = 'Network Error: ' + err.message;
+    }
   }
-
-  window.decorateBookDOM = function() {
-    const activeCenter = window.getActiveCenterValue();
-    const activeData = window.allBooksList || [];
-    let count = activeData.length;
-    
-    document.querySelectorAll('#books table tbody tr').forEach(row => {
-      const codeEl = row.querySelector('code');
-      const bId = codeEl ? codeEl.textContent.trim() : '';
-      const bookObj = activeData.find(b => String(b.bookId).trim() === bId);
-      const rowCenter = bookObj && bookObj.center ? bookObj.center : 'Thousand Oaks';
-
-      if (bId && !row.querySelector('.book-row-cb')) {
-        const td = document.createElement('td');
-        td.style.textAlign = 'center';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.className = 'book-row-cb';
-        cb.onchange = () => { if (typeof toggleRowBookSelection === 'function') toggleRowBookSelection(bId, cb.checked); };
-        td.appendChild(cb);
-        row.insertBefore(td, row.firstChild);
-      }
-      let pill = row.querySelector('.row-center-pill');
-      if (!pill && codeEl && codeEl.parentNode) {
-        pill = document.createElement('span');
-        pill.style.marginLeft = '6px';
-        codeEl.parentNode.appendChild(pill);
-      }
-      if (pill) {
-        pill.className = 'row-center-pill center-sticker-tag ' + (rowCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks');
-        pill.textContent = rowCenter;
-      }
-    });
-
-    const headRow = document.querySelector('#books table thead tr');
-    if (headRow && !headRow.querySelector('.book-head-cb')) {
-      const th = document.createElement('th');
-      th.className = 'book-head-cb';
-      th.style.width = '36px';
-      th.style.textAlign = 'center';
-      const masterCb = document.createElement('input');
-      masterCb.type = 'checkbox';
-      masterCb.title = 'Select All';
-      masterCb.onchange = () => {
-        document.querySelectorAll('#books table tbody tr .book-row-cb').forEach(cb => {
-          cb.checked = masterCb.checked;
-          cb.dispatchEvent(new Event('change'));
-        });
-      };
-      th.appendChild(masterCb);
-      headRow.insertBefore(th, headRow.firstChild);
-    }
-
-    document.querySelectorAll('#books .avery-label, #books .book-sticker-card, #books .qr-card').forEach(card => {
-      const subEl = card.querySelector('.book-id-sub, code');
-      let bId = card.getAttribute('data-book-id') || (subEl ? subEl.textContent.trim().split(/\s+/)[0] : '');
-      const bookObj = activeData.find(b => String(b.bookId).trim() === bId);
-      const cardCenter = bookObj && bookObj.center ? bookObj.center : 'Thousand Oaks';
-
-      if (!card.querySelector('.center-sticker-tag')) {
-        const tag = document.createElement('div');
-        const cls = cardCenter.toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks';
-        tag.innerHTML = '<span class="center-sticker-tag ' + cls + '">' + cardCenter + '</span>';
-        card.appendChild(tag);
-      }
-    });
-
-    const statusEl = document.getElementById('bookCenterStatus');
-    if (statusEl) {
-      const label = activeCenter === 'all' ? 'All Centers' : activeCenter;
-      statusEl.textContent = 'Showing ' + count + ' ' + label + ' book(s) & stickers';
-    }
-  };
-
-  setTimeout(() => {
-    const selects = Array.from(document.querySelectorAll('select'));
-    const filterSelect = selects.find(sel => 
-      sel.textContent.toLowerCase().includes('camarillo') && 
-      sel.textContent.toLowerCase().includes('thousand') &&
-      (!sel.id || !sel.id.toLowerCase().includes('register'))
-    );
-    if (filterSelect) {
-      filterSelect.removeAttribute('onchange');
-      filterSelect.addEventListener('change', window.onBookCenterFilterChange);
-    }
-  }, 500);
-
 </script>
 </body>
 </html>
