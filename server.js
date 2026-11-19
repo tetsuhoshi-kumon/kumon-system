@@ -1323,6 +1323,85 @@ app.post('/api/upload-books', upload.single('file'), async (req, res) => {
   }
 
   const results = [];
+  const uiTargetCenter = (req.body.center || 'Thousand Oaks').trim();
+  console.log('=> CSV Book Upload initiated');
+
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', async () => {
+      let added = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (const row of results) {
+        const title = row['Title'] || row['title'] || row['TITLE'] || '';
+        const author = row['Author'] || row['author'] || row['AUTHOR'] || '';
+        const level = row['Level'] || row['level'] || row['LEVEL'] || 'GEN';
+        const bookNumber = row['Number'] || row['number'] || row['Book Number'] || row['Book #'] || '';
+        let bookId = row['bookId'] || row['Book ID'] || row['Barcode'] || row['id'] || row['ID'] || '';
+        
+        // --- NEW LOGIC: READ CENTER FROM CSV COLUMN ---
+        const csvCenter = row['Center'] || row['center'] || row['CENTER'] || row['Location'] || '';
+        const finalCenter = csvCenter ? String(csvCenter).trim() : uiTargetCenter;
+
+        if (!title) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          if (!bookId) {
+            let unique = false;
+            const cleanLevel = String(level).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4) || 'GEN';
+            while (!unique) {
+              const timePart = Date.now().toString(36).toUpperCase().slice(-4);
+              const randPart = Math.floor(10 + Math.random() * 90);
+              bookId = `BK-${cleanLevel}-${timePart}-${randPart}`;
+              const existing = await Book.findOne({ bookId });
+              if (!existing) unique = true;
+            }
+          } else {
+            bookId = String(bookId).trim();
+          }
+
+          await Book.findOneAndUpdate(
+            { bookId },
+            {
+              bookId,
+              title: String(title).trim(),
+              author: String(author).trim(),
+              level: String(level).trim(),
+              bookNumber: String(bookNumber).trim(),
+              center: finalCenter
+            },
+            { upsert: true, new: true, rawResult: true }
+          );
+
+          added++;
+        } catch (dbErr) {
+          console.error("Book CSV Row Error:", dbErr.message);
+          errors++;
+        }
+      }
+
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (fsErr) {}
+
+      res.json({
+        success: true,
+        message: `CSV Processed! ${added} books saved. ${skipped > 0 ? skipped + ' skipped.' : ''} ${errors > 0 ? errors + ' errors.' : ''}`
+      });
+    })
+    .on('error', (err) => {
+      console.error('CSV Parsing Error:', err);
+      res.status(500).json({ success: false, message: 'Failed to parse the CSV file.' });
+    });
+});
+  }
+
+  const results = [];
   const targetCenter = (req.body.center || 'Thousand Oaks').trim();
   console.log('=> CSV Book Upload initiated for center:', targetCenter);
 
