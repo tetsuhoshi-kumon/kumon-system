@@ -14,7 +14,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// --- Timezone Helper Functions ---
 const TIMEZONE = process.env.TZ || 'America/Los_Angeles';
 
 const getTime = (date = new Date()) =>
