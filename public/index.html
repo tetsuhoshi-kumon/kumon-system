@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.41)</title>
+  <title>Kumon Center Management System (v1.42)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -38,27 +38,29 @@
     .time-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
     .time-ok { background: #e8f8f0; color: #27ae60; } .time-warn { background: #fef5e7; color: #e67e22; border: 1px solid #f39c12; }
     .time-alert { background: #fdebd0; color: #c0392b; border: 1px solid #e74c3c; animation: pulseAlert 1.5s infinite; }
-    @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     .subj-pill { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
     .subj-math { background-color: #ebf5fb; color: #1d6fa5; border: 1px solid #aed6f1; }
     .subj-reading { background-color: #fdeed9; color: #d93829; border: 1px solid #fadbd8; }
     .subj-dual-wrapper { display: inline-flex; align-items: center; gap: 4px; }
     
-    /* V1.40 AVERY PRINT FIX */
+    /* V1.42 AVERY PRINT FIX */
     @media print {
       @page { margin: 0 !important; }
-      html, body { background: transparent !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      header, nav, .no-print, input, button, select, h2, h3, h4, p, .toolbar-box, #scanToast, .modal-overlay { display: none !important; }
-      .container, .view-card { max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important; }
+      html, body { background: transparent !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin: 0 !important; padding: 0 !important; }
+      header, nav, .no-print, input, button, select, h2, h3, h4, p, .toolbar-box, #scanToast, .modal-overlay, #bookCenterStatus { display: none !important; }
+      .container, .view-card, .tab-content { max-width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important; display: block !important; }
+      
       .sheet-page {
         width: 8.5in !important; height: 11in !important; max-height: 11in !important; box-sizing: border-box !important;
         padding-top: 0.5in !important; padding-bottom: 0.5in !important; padding-left: 0.1875in !important; padding-right: 0.1875in !important;
-        margin: 0 !important; page-break-before: always !important; overflow: hidden !important; display: block !important;
+        margin: 0 !important; page-break-before: always !important; overflow: hidden !important; display: block !important; border: none !important; box-shadow: none !important;
       }
       .sheet-page:first-of-type { page-break-before: auto !important; }
+      
       .badge-card {
         float: left !important; width: 2.625in !important; height: 1.0in !important; max-height: 1.0in !important; margin: 0 !important; margin-right: 0.125in !important;
         padding: 0.08in 0.12in !important; border: none !important; box-sizing: border-box !important; display: flex !important; align-items: center !important; justify-content: space-between !important; overflow: hidden !important;
+        background: transparent !important;
       }
       .badge-card:nth-of-type(3n) { margin-right: 0 !important; }
       .badge-spacer { visibility: hidden !important; border: none !important; height: 1.0in !important; width: 2.625in !important; }
@@ -69,17 +71,24 @@
     .sheet-page .badge-card { float: left; width: 2.625in; height: 1.0in; margin-right: 0.125in; border: 1px dashed #ccc; box-sizing: border-box; padding: 0.08in 0.12in; display: flex; align-items: center; justify-content: space-between; position: relative; }
     .sheet-page .badge-card:nth-of-type(3n) { margin-right: 0; }
     .sheet-page::after { content: ""; display: table; clear: both; }
-    .badge-info { font-size: 11px; line-height: 1.05; overflow: hidden; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; }
+    
+    /* Strict layout control to prevent any single element from pushing the QR code */
+    .book-badge-info { 
+      font-size: 11px; line-height: 1.1; max-width: 1.6in !important; 
+      display: flex; flex-direction: column; justify-content: center; overflow: hidden; height: 0.84in;
+    }
+    .book-tag-pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 0px 4px; border-radius: 3px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
+    .book-title-line { font-size: 12px; font-weight: 800; color: #111; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 1px;}
+    .book-id-sub { font-size: 9px; color: #888; font-family: monospace; margin-bottom: 1px; }
+    .badge-qr { width: 0.78in !important; height: 0.78in !important; flex-shrink: 0; margin-left: 0; }
+    
+    .badge-info { font-size: 11px; line-height: 1.05; overflow: hidden; max-width: 1.6in; display: flex; flex-direction: column; justify-content: center; }
     .badge-name-last { font-size: 20px; font-weight: 900; line-height: 1.05; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
     .badge-name-first { font-size: 16px; font-weight: 700; line-height: 1.05; letter-spacing: -0.2px; margin-top: 1px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
-    .book-badge-info { font-size: 11px; line-height: 1.1; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-    .book-tag-pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 1px 4px; border-radius: 3px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px; }
-    .book-title-line { font-size: 13px; font-weight: 800; color: #111; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .book-id-sub { font-size: 9px; color: #888; font-family: monospace; margin-top: 2px; }
-    .badge-qr { width: 0.78in; height: 0.78in; flex-shrink: 0; margin-left: 2px; }
+    
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
     .toolbar-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
-    .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; margin-top: 2px; border: 1px solid #2c3e50; color: #2c3e50; background: #f0f4f8; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; border: 1px solid #2c3e50; color: #2c3e50; background: #f0f4f8; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
     .center-sticker-tag.camarillo { border-color: #1a5276; color: #1a5276; background: #ebf5fb; }
     .center-sticker-tag.thousand-oaks { border-color: #0e6251; color: #0e6251; background: #e8f8f5; }
   </style>
@@ -103,7 +112,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.41</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.42</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -192,7 +201,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.41)</option>
+            <option value="all">View All Centers</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -483,7 +492,6 @@
       const res = await fetch(`/api/students/${encodeURIComponent(id)}/book-history`);
       const data = await res.json();
       document.getElementById('modalCurrentBooks').innerHTML = data.currentlyOut.length ? data.currentlyOut.map(b => `<div>📖 <strong>${b.title}</strong></div>`).join('') : 'None';
-      document.getElementById('modalPastBooks').innerHTML = data.pastLogs.length ? `<table style="font-size:0.85rem;"><tbody>${data.pastLogs.map(l => `<tr><td><strong>${l.title}</strong></td><td>${l.returnDate}</td></tr>`).join('')}</tbody></table>` : 'None';
     } catch (e) { document.getElementById('modalCurrentBooks').innerHTML = 'Error'; }
   }
   function closeReadingHistoryModal() { document.getElementById('readingHistoryModal').style.display = 'none'; }
@@ -508,9 +516,13 @@
   async function loadBadges() { allStudents = await (await fetch('/api/students-qr')).json(); populateSlotDropdown(); refreshGlobalDatalist(); renderBadges(allStudents); }
   function toggleSelectStudent(id) { selectedStudentIds.has(id) ? selectedStudentIds.delete(id) : selectedStudentIds.add(id); document.getElementById('selectedCount').textContent = selectedStudentIds.size; }
   function selectAllStudents(select) { select ? allStudents.forEach(s => selectedStudentIds.add(s.id)) : selectedStudentIds.clear(); renderBadges(allStudents); }
+  
   function renderBadges(list) {
     const items = []; for (let i=1; i<currentStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
-    list.forEach(s => items.push(`<div class="badge-card"><div class="no-print" style="position:absolute;top:4px;right:4px;"><input type="checkbox" ${selectedStudentIds.has(s.id)?'checked':''} onchange="toggleSelectStudent('${s.id}')" /><button class="chip-btn" style="background:#e74c3c;" onclick="deleteStudent('${s.id}')">✕</button></div><div class="badge-info"><div class="badge-name-last">${s.lastName}</div><div class="badge-name-first">${s.firstName}</div><div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div></div><img class="badge-qr" src="${s.qrCode}" /></div>`));
+    list.forEach(s => {
+      const qrCodeHtml = s.qrCode ? `<img class="badge-qr" src="${s.qrCode}" />` : '';
+      items.push(`<div class="badge-card"><div class="no-print" style="position:absolute;top:4px;right:4px;"><input type="checkbox" ${selectedStudentIds.has(s.id)?'checked':''} onchange="toggleSelectStudent('${s.id}')" /><button class="chip-btn" style="background:#e74c3c;" onclick="deleteStudent('${s.id}')">✕</button></div><div class="badge-info"><div class="badge-name-last">${s.lastName}</div><div class="badge-name-first">${s.firstName}</div><div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div></div>${qrCodeHtml}</div>`);
+    });
     const pages = []; for (let i=0; i<items.length; i+=30) pages.push(`<div class="sheet-page">${items.slice(i, i+30).join('')}</div>`);
     document.getElementById('badgeContainer').innerHTML = pages.join('');
   }
@@ -520,7 +532,7 @@
   async function deleteStudent(id) { if(confirm('Delete?')) { await fetch(`/api/students/${id}`, {method:'DELETE'}); loadBadges(); } }
 
   // ==============================================
-  // V1.41: CUSTOM KUMON SORTING, TRUNCATION, AND AVERY PRINT 
+  // V1.42: CUSTOM KUMON SORTING, TRUNCATION, AND AVERY PRINT 
   // ==============================================
   window.__V141_ACTIVE_CENTER__ = 'all';
 
@@ -567,7 +579,7 @@
     if (statusEl) {
       const val = window.__V141_ACTIVE_CENTER__;
       const label = val === 'all' ? 'All Centers' : val;
-      statusEl.textContent = 'Showing ' + (allBooksList.length || 0) + ' ' + label + ' book(s) & stickers';
+      statusEl.textContent = 'Showing ' + (allBooksList.length || 0) + ' ' + label + ' book(s)';
     }
     
     document.querySelectorAll('#books table tbody tr').forEach(row => {
@@ -600,12 +612,7 @@
     if(res.ok) { playAudioTone('success'); clearBookInputs(); loadBooks(); }
   }
   function clearBookInputs() { document.getElementById('bookScanInput').value = ''; document.getElementById('bookStudentScanInput').value = ''; }
-  async function addNewBook() {
-    const data = { title: document.getElementById('newBookTitle').value, author: document.getElementById('newBookAuthor').value, level: document.getElementById('newBookLevel').value, bookNumber: document.getElementById('newBookNumber').value, bookId: document.getElementById('newBookId').value, center: document.getElementById('registerBookCenterSelect').value };
-    if(!data.title) return;
-    await fetch('/api/books', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-    loadBooks();
-  }
+  
   function renderBorrowedBooksTable() {
     const tb = document.querySelector('#borrowedBooksTable tbody'); if (!tb) return;
     const b = allBooksList.filter(x => x.status === 'CHECKED_OUT');
@@ -622,77 +629,37 @@
   function resetBookStickerOffset() { currentBookStartSlot = 1; document.getElementById('startSlotSelectBook').value = 1; renderBookBadges(allBooksList); }
   function selectAllBooks(sel) { sel ? allBooksList.forEach(b => selectedBookIds.add(b.bookId)) : selectedBookIds.clear(); renderBookBadges(allBooksList); }
   
-  // RENDER BOOK BADGES WITH HTML TAGS INTACT
+  // V1.42: TRUNCATED RENDER WITH STRICT HTML TEMPLATE LITERALS
   function renderBookBadges(list) {
     const sorted = window.sortKumonBooks(list);
     const items = []; for (let i=1; i<currentBookStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
     sorted.forEach(b => {
       let safeTitle = b.title || '';
-      if (safeTitle.length > 27) safeTitle = safeTitle.substring(0, 25) + '...';
-      const safeTitleJs = (b.title || '').replace(/'/g, "\\'");
-      const safeAuthorJs = (b.author || '').replace(/'/g, "\\'");
-      const safeLevelJs = (b.level || 'GEN').replace(/'/g, "\\'");
-      const safeNumberJs = (b.bookNumber || '').replace(/'/g, "\\'");
+      if (safeTitle.length > 25) safeTitle = safeTitle.substring(0, 23) + '...'; 
       const isChecked = selectedBookIds.has(b.bookId) ? 'checked' : '';
       const centerClass = (b.center || 'Thousand Oaks').toLowerCase() === 'camarillo' ? 'camarillo' : 'thousand-oaks';
-
-      items.push(`
-        <div class="badge-card">
+      const qrCodeHtml = b.qrCode ? `<img class="badge-qr" src="${b.qrCode}" />` : '';
+      
+      const badgeHtml = `<div class="badge-card">
           <div class="no-print" style="position:absolute;top:4px;right:4px;">
             <input type="checkbox" ${isChecked} onchange="if(this.checked) selectedBookIds.add('${b.bookId}'); else selectedBookIds.delete('${b.bookId}');" />
-            <button class="chip-btn" style="background:#27ae60;" onclick="printSingleBookBadge('${safeTitleJs}','${safeAuthorJs}','${safeLevelJs}','${safeNumberJs}','${b.bookId}','${b.qrCode}')">🖨️</button>
             <button class="chip-btn" style="background:#e74c3c;" onclick="deleteBook('${b.bookId}')">✕</button>
           </div>
           <div class="book-badge-info">
             <div class="book-tag-pill">${b.level} ${b.bookNumber?' - '+b.bookNumber:''}</div>
-            <div style="font-size:13px;font-weight:800;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(b.title || '').replace(/"/g, '&quot;')}">${safeTitle}</div>
+            <div class="book-title-line" title="${(b.title || '').replace(/"/g, '&quot;')}">${safeTitle}</div>
             <div class="book-id-sub">${b.bookId}</div>
-            <div><span class="center-sticker-tag ${centerClass}">${b.center || 'Thousand Oaks'}</span></div>
+            <div class="center-sticker-tag ${centerClass}">${b.center || 'Thousand Oaks'}</div>
           </div>
-          <img class="badge-qr" src="${b.qrCode}" />
-        </div>
-      `);
+          ${qrCodeHtml}
+        </div>`;
+      items.push(badgeHtml);
     });
     const pages = []; for (let i=0; i<items.length; i+=30) pages.push(`<div class="sheet-page">${items.slice(i, i+30).join('')}</div>`);
     document.getElementById('bookBadgeContainer').innerHTML = pages.join('');
   }
 
-  window.printSingleBookBadge = function(title, author, level, number, id, qrCode) {
-    const printWindow = window.open('', '_blank', 'width=450,height=300');
-    const levelNumberLabel = number ? `${level || 'GEN'} - ${number}` : `${level || 'GEN'}`;
-    let safeTitle = title || '';
-    if (safeTitle.length > 27) safeTitle = safeTitle.substring(0, 25) + '...';
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Book Label - ${title}</title>
-          <style>
-            @page { size: 2.625in 1in; margin: 0; }
-            * { box-sizing: border-box; }
-            body { margin: 0; padding: 0.08in 0.12in; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: space-between; width: 2.625in; height: 1in; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .info { line-height: 1.1; font-size: 11px; max-width: 1.68in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-            .tag { display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px; }
-            .pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 1px 6px; border-radius: 3px; letter-spacing: 0.3px; }
-            .title { font-size: 13px; font-weight: 800; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.68in; }
-            .id { font-size: 9px; color: #888; font-family: monospace; margin-top: 2px; }
-            .qr { width: 0.78in; height: 0.78in; flex-shrink: 0; }
-          </style>
-        </head>
-        <body>
-          <div class="info"><div class="tag"><span class="pill">${levelNumberLabel}</span></div><div class="title">${safeTitle}</div><div class="id">${id}</div></div>
-          <img class="qr" src="${qrCode}" alt="QR" />
-          <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };<\/script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
   function printSelectedBookBadges() { renderBookBadges(allBooksList.filter(b => selectedBookIds.has(b.bookId))); window.print(); }
-  function printAllBookBadges() { window.print(); }
-  async function deleteBook(id) { if(confirm('Delete book?')){ await fetch(`/api/books/${id}`, {method:'DELETE'}); loadBooks(); } }
   
   async function bulkDeleteBooks() {
     const ids = Array.from(selectedBookIds);
@@ -703,52 +670,22 @@
     loadBooks();
   }
 
-  async function loadStaff() {
-    allStaff = await (await fetch('/api/employees-qr')).json();
-    document.querySelector('#staffRosterTable tbody').innerHTML = allStaff.map(e => `<tr><td>${e.id}</td><td>${e.firstName} ${e.lastName}</td><td>${e.role}</td><td><button class="btn-danger" onclick="deleteStaff('${e.id}')">Del</button></td></tr>`).join('');
-    refreshActiveStaff();
-  }
-  async function refreshActiveStaff() {
-    const data = await (await fetch('/api/active-staff')).json();
-    document.querySelector('#activeStaffTable tbody').innerHTML = data.map(e => `<tr><td>${e.firstName}</td><td>${e.role}</td><td>${e.checkInFormatted}</td><td>${e.minutesOnDuty}m</td><td><button class="btn-danger" onclick="manualStaffClockOut('${e.id}')">Clock Out</button></td></tr>`).join('');
-  }
-  async function manualStaffClockOut(id) { await fetch('/api/staff-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId: id, customTime: '' }) }); loadStaff(); }
-  async function addEmployee() {
-    await fetch('/api/employees', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: document.getElementById('newEmpId').value, firstName: document.getElementById('newEmpFirst').value, lastName: document.getElementById('newEmpLast').value, role: document.getElementById('newEmpRole').value }) });
-    loadStaff();
-  }
-  async function deleteStaff(id) { if(confirm('Delete?')) { await fetch(`/api/employees/${id}`, {method:'DELETE'}); loadStaff(); } }
-  
   async function uploadBookCSV() {
     const file = document.getElementById('bookCsvFileInput').files[0]; if(!file) return alert("Select a CSV file first!");
     const fd = new FormData(); fd.append('file', file); fd.append('center', document.getElementById('bookCsvCenter').value);
-    
     const statusEl = document.getElementById('bookUploadStatus');
-    statusEl.style.color = '#333';
-    statusEl.textContent = 'Uploading... (Check Console if stuck)';
-
+    statusEl.style.color = '#333'; statusEl.textContent = 'Uploading...';
     try {
       const res = await fetch('/api/upload-books', { method: 'POST', body: fd });
       const text = await res.text();
       let data;
-      try { data = JSON.parse(text); } catch(e) { 
-        statusEl.style.color = '#e74c3c';
-        statusEl.textContent = "Server Crash (502). Check Console.";
-        return;
-      }
+      try { data = JSON.parse(text); } catch(e) { statusEl.style.color = '#e74c3c'; statusEl.textContent = "Server Crash."; return; }
       if (res.ok && data.success !== false) {
-        statusEl.style.color = '#27ae60';
-        statusEl.textContent = data.message || 'Upload successful!';
-        document.getElementById('bookCsvFileInput').value = '';
-        loadBooks();
+        statusEl.style.color = '#27ae60'; statusEl.textContent = data.message || 'Upload successful!'; document.getElementById('bookCsvFileInput').value = ''; loadBooks();
       } else {
-        statusEl.style.color = '#e74c3c';
-        statusEl.textContent = "Error: " + (data.message || data.error || 'Invalid CSV format.');
+        statusEl.style.color = '#e74c3c'; statusEl.textContent = "Error: " + (data.message || 'Invalid format.');
       }
-    } catch(err) {
-      statusEl.style.color = '#e74c3c';
-      statusEl.textContent = 'Network Error: ' + err.message;
-    }
+    } catch(err) { statusEl.style.color = '#e74c3c'; statusEl.textContent = 'Network Error.'; }
   }
 </script>
 </body>
