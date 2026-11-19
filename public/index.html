@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.25)</title>
+  <title>Kumon Center Management System (v1.26)</title>
   <style>
     :root {
       --primary: #2980b9;
@@ -408,7 +408,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.25</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.26</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -1176,55 +1176,32 @@
             window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
           <\/script>
         
-<!-- V1.25 PRISTINE FETCH OVERRIDE -->
+<!-- V1.26 CLEAN OVERRIDE -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("v1.25: Bypassing all legacy ghost hooks with Pristine Fetch");
+  console.log("v1.26 Active: Bypassing legacy bugs.");
+  
+  // Override the dropdown reader safely
+  window.getActiveCenterValue = function() {
+    const selects = Array.from(document.querySelectorAll('select'));
+    const filterSelect = selects.find(sel => 
+      sel.textContent.toLowerCase().includes('camarillo') && 
+      sel.textContent.toLowerCase().includes('thousand') &&
+      (!sel.id || !sel.id.toLowerCase().includes('register'))
+    );
     
-    // Grab a pristine fetch engine from an invisible iframe
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-    const pureFetch = iframe.contentWindow.fetch;
+    if (!filterSelect || filterSelect.selectedIndex < 0) return 'all';
     
-    window.fetch = async function() {
-        let args = Array.prototype.slice.call(arguments);
-        let url = args[0];
-        
-        if (typeof url === 'string' && url.includes('/api/books-qr')) {
-            const selects = Array.from(document.querySelectorAll('select'));
-            const sel = selects.find(s => s.textContent.toLowerCase().includes('camarillo') && s.textContent.toLowerCase().includes('thousand'));
-            
-            let center = 'all';
-            if (sel && sel.selectedIndex >= 0) {
-                const txt = sel.options[sel.selectedIndex].textContent.toLowerCase();
-                if (txt.includes('camarillo')) center = 'Camarillo';
-                else if (txt.includes('thousand')) center = 'Thousand Oaks';
-                else if (txt.includes('unassigned')) center = 'Unassigned';
-            }
-            
-            url = url.split('?')[0] + '?center=' + encodeURIComponent(center);
-            args[0] = url;
-            console.log('v1.25 Pristine Fetch requesting:', url);
-        }
-        
-        const res = await pureFetch.apply(window, args);
-        
-        if (typeof url === 'string' && url.includes('/api/books-qr')) {
-            const clone = res.clone();
-            clone.json().then(data => {
-                if (Array.isArray(data)) {
-                    window.allBooksList = data;
-                    setTimeout(() => { if (typeof window.decorateBookDOM === 'function') window.decorateBookDOM(); }, 200);
-                }
-            }).catch(e => console.log('v1.25 json clone err:', e));
-        }
-        return res;
-    };
-});
+    const txt = filterSelect.options[filterSelect.selectedIndex].textContent.toLowerCase();
+    
+    if (txt.includes('camarillo')) return 'Camarillo';
+    if (txt.includes('thousand')) return 'Thousand Oaks';
+    if (txt.includes('unassigned')) return 'Unassigned';
+    
+    return 'all';
+  };
 </script>
-
 </body>
+
       </html>
     `);
     printWindow.document.close();
@@ -2903,7 +2880,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.25)
+  // BOOK CHECKBOX SYNC & CLEANUP HANDLERS (v1.26)
   // ==========================================
   function toggleRowBookSelection(bookId, checked) {
     if (typeof selectedBookIds === 'undefined') window.selectedBookIds = new Set();
@@ -2998,7 +2975,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // PRINT STICKER CENTER LABEL DECORATOR (v1.25)
+  // PRINT STICKER CENTER LABEL DECORATOR (v1.26)
   // ==========================================
   function decorateStickersWithCenterLabels() {
     // 1. Decorate Book Avery stickers in print sheet or preview cards
@@ -3066,7 +3043,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.25)
+  // EXACT DATA-DRIVEN CENTER FILTER & PILL SYNC (v1.26)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3189,7 +3166,7 @@ document.addEventListener('DOMContentLoaded', () => {
   injectRegisterBookCenterSelect();
 
   // ==========================================
-  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.25)
+  // CLEAN CENTER FILTER & REGISTER BOOK SELECTOR (v1.26)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3318,7 +3295,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.25)
+  // SYNCHRONIZED BOOK TABLE & PRINTABLE STICKER FILTER (v1.26)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     if (window._isFilteringBooks) return;
@@ -3426,7 +3403,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // SOLID SYNCHRONOUS CENTER FILTER (v1.25)
+  // SOLID SYNCHRONOUS CENTER FILTER (v1.26)
   // ==========================================
   window.applyClientSideBookFilter = function() {
     const filterEl = document.getElementById('bookCenterFilter');
@@ -3528,7 +3505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // BULLETPROOF CSS-NATIVE FILTER (v1.25)
+  // BULLETPROOF CSS-NATIVE FILTER (v1.26)
   // ==========================================
   (function() {
     // 1. Inject Global CSS Rules to hide rows/stickers natively
@@ -3651,7 +3628,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.25)
+  // GLOBALLY BIND BOOK DATA FROM FETCH (v1.26)
   // ==========================================
   if (!window._v117FetchBound) {
     window._v117FetchBound = true;
@@ -3683,7 +3660,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.25)
+  // CLEAN SERVER-SIDE FILTER & CHECKBOX RENDERER (v1.26)
   // ==========================================
   window.onBookCenterFilterChange = function() {
     if (typeof loadBooks === 'function') loadBooks();
@@ -3736,7 +3713,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // ==========================================
-  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.25)
+  // BULLETPROOF DROPDOWN VALUE EXTRACTOR (v1.26)
   // ==========================================
   window.getActiveCenterValue = function() {
     // 1. Locate the dropdown that has our center names (bypassing ID typos)
