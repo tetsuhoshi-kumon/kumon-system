@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.46)</title>
+  <title>Kumon Center Management System (v1.47)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -54,7 +54,7 @@
       font-size: 11px; line-height: 1.1; max-width: 1.6in; 
       display: flex; flex-direction: column; justify-content: center; overflow: hidden; height: 0.84in;
     }
-    .book-tag-pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 0px 4px; border-radius: 3px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
+    .book-tag-pill { font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
     .book-title-line { font-size: 12px; font-weight: 800; color: #111; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.6in; margin-bottom: 1px;}
     .book-id-sub { font-size: 9px; color: #888; font-family: monospace; margin-bottom: 1px; }
     .badge-qr { width: 0.78in; height: 0.78in; flex-shrink: 0; margin-left: 0; }
@@ -65,9 +65,9 @@
     
     .chip-btn { color: white; border: none; border-radius: 3px; padding: 3px 6px; font-size: 11px; cursor: pointer; }
     .toolbar-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
-    .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; border: 1px solid #2c3e50; color: #2c3e50; background: #f0f4f8; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-    .center-sticker-tag.camarillo { border-color: #1a5276; color: #1a5276; background: #ebf5fb; }
-    .center-sticker-tag.thousand-oaks { border-color: #0e6251; color: #0e6251; background: #e8f8f5; }
+    .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #2c3e50; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .center-sticker-tag.camarillo { color: #1a5276; }
+    .center-sticker-tag.thousand-oaks { color: #0e6251; }
   </style>
 </head>
 <body>
@@ -89,7 +89,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.46</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.47</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -197,7 +197,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.46)</option>
+            <option value="all">View All Centers (v1.47)</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -426,12 +426,12 @@
             
             /* Book Badges Specific */
             .book-badge-info { font-size: 11px; line-height: 1.1; max-width: 1.6in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; height: 0.84in; }
-            .book-tag-pill { background: #ebf5fb; border: 1px solid #aed6f1; padding: 0px 4px; border-radius: 3px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
+            .book-tag-pill { font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
             .book-title-line { font-size: 12px; font-weight: 800; color: #111; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.6in; margin-bottom: 1px;}
             .book-id-sub { font-size: 9px; color: #888; font-family: monospace; margin-bottom: 1px; }
-            .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; border: 1px solid #2c3e50; color: #2c3e50; background: #f0f4f8; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-            .center-sticker-tag.camarillo { border-color: #1a5276; color: #1a5276; background: #ebf5fb; }
-            .center-sticker-tag.thousand-oaks { border-color: #0e6251; color: #0e6251; background: #e8f8f5; }
+            .center-sticker-tag { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #2c3e50; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+            .center-sticker-tag.camarillo { color: #1a5276; }
+            .center-sticker-tag.thousand-oaks { color: #0e6251; }
             
             /* Student Badges Specific */
             .badge-info { font-size: 11px; line-height: 1.05; overflow: hidden; max-width: 1.6in; display: flex; flex-direction: column; justify-content: center; }
@@ -480,7 +480,7 @@
     
     const html = `
       <div class="info">
-        <div class="tag" style="display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px;"><span class="pill" style="background: #ebf5fb; border: 1px solid #aed6f1; padding: 1px 6px; border-radius: 3px;">${levelNumberLabel}</span></div>
+        <div class="tag" style="display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px;"><span class="pill" >${levelNumberLabel}</span></div>
         <div class="title" style="font-size: 13px; font-weight: 800; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.68in;">${safeTitle}</div>
         <div class="id" style="font-size: 9px; color: #888; font-family: monospace; margin-top: 2px;">${id}</div>
       </div>
@@ -833,6 +833,15 @@
   }
 
   async function deleteBook(id) { if(confirm('Delete book?')){ await fetch(`/api/books/${id}`, {method:'DELETE'}); loadBooks(); } }
+  
+  async function bulkDeleteBooks() {
+    const ids = Array.from(selectedBookIds);
+    if(ids.length === 0) return alert('Select books first.');
+    if(!confirm(`Delete ${ids.length} books?`)) return;
+    await fetch('/api/books/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookIds: ids }) });
+    selectedBookIds.clear();
+    loadBooks();
+  }
 
   async function loadStaff() {
     allStaff = await (await fetch('/api/employees-qr')).json();
