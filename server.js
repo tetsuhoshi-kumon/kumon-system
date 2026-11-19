@@ -1313,4 +1313,100 @@ app.post('/api/books/delete-all', async (req, res) => {
   }
 });
 
+
+// ==========================================
+// CSV BOOK UPLOAD (Restored in v1.33)
+// ==========================================
+app.post('/api/upload-books', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No CSV file uploaded.' });
+  }
+
+  const results = [];
+  const targetCenter = (req.body.center || 'Thousand Oaks').trim();
+  console.log('=> CSV Book Upload initiated for center:', targetCenter);
+
+  fs.createReadStream(req.file.path)
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', async () => {
+      let added = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (const row of results) {
+        // Handle various common CSV header names
+        const title = row['Title'] || row['title'] || row['TITLE'] || '';
+        const author = row['Author'] || row['author'] || row['AUTHOR'] || '';
+        const level = row['Level'] || row['level'] || row['LEVEL'] || 'GEN';
+        const bookNumber = row['Number'] || row['number'] || row['Book Number'] || row['Book #'] || '';
+        let bookId = row['bookId'] || row['Book ID'] || row['Barcode'] || row['id'] || row['ID'] || '';
+
+        if (!title) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          if (!bookId) {
+            // Generate an ID if it's missing from the CSV
+            let unique = false;
+            const cleanLevel = String(level).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4) || 'GEN';
+            while (!unique) {
+              const timePart = Date.now().toString(36).toUpperCase().slice(-4);
+              const randPart = Math.floor(10 + Math.random() * 90);
+              bookId = `BK-${cleanLevel}-${timePart}-${randPart}`;
+              const existing = await Book.findOne({ bookId });
+              if (!existing) unique = true;
+            }
+          } else {
+            // If they provided an ID, ensure it's a clean string
+            bookId = String(bookId).trim();
+          }
+
+          // Upsert the book
+          const result = await Book.findOneAndUpdate(
+            { bookId },
+            {
+              bookId,
+              title: String(title).trim(),
+              author: String(author).trim(),
+              level: String(level).trim(),
+              bookNumber: String(bookNumber).trim(),
+              center: targetCenter
+            },
+            { upsert: true, new: true, rawResult: true }
+          );
+
+          if (result.lastErrorObject && result.lastErrorObject.updatedExisting) {
+            // Updated existing book
+            added++; 
+          } else {
+            // Inserted new book
+            added++;
+          }
+        } catch (dbErr) {
+          console.error("Book CSV Row Error:", dbErr.message);
+          errors++;
+        }
+      }
+
+      // Clean up the temporary uploaded file
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (fsErr) {
+        console.error("Temp file cleanup failed:", fsErr.message);
+      }
+
+      res.json({
+        success: true,
+        message: `CSV Processed! ${added} saved to ${targetCenter}. ${skipped} skipped (missing title). ${errors > 0 ? errors + ' errors.' : ''}`
+      });
+    })
+    .on('error', (err) => {
+      console.error('CSV Parsing Error:', err);
+      res.status(500).json({ success: false, message: 'Failed to parse the CSV file.' });
+    });
+});
+
 app.listen(PORT, () => console.log(`Kumon Check-In System running on port ${PORT}`));
