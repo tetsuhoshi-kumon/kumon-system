@@ -14,7 +14,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// --- Timezone Helper Functions ---
 const TIMEZONE = process.env.TZ || 'America/Los_Angeles';
 
 const getTime = (date = new Date()) =>
@@ -25,31 +24,23 @@ const getDate = (date = new Date()) =>
 
 function resolveClockOutDate(checkInDate, timeInput) {
   if (!timeInput || !timeInput.trim()) return new Date();
-
   const str = timeInput.trim();
   const match = str.match(/^(\d{1,2}):(\d{2})(?:\s*([ap]m))?$/i);
   if (!match) return null;
-
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
   const ampm = match[3] ? match[3].toLowerCase() : null;
-
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-
   if (ampm === 'pm' && hours < 12) hours += 12;
   if (ampm === 'am' && hours === 12) hours = 0;
-
   const target = new Date(checkInDate);
   target.setHours(hours, minutes, 0, 0);
-
   if (!ampm && target < checkInDate && hours < 12) {
     target.setHours(hours + 12, minutes, 0, 0);
   }
-
   return target;
 }
 
-// --- MongoDB Atlas Connection & Legacy Index Sanitization ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://tetsuhoshi_db_user:-BMc_UJc5Bz3XkB@tetsuhoshi-kumon.l0lkzen.mongodb.net/kumon?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
@@ -61,14 +52,12 @@ mongoose.connect(MONGO_URI)
       for (const idx of indexes) {
         if (idx.name !== '_id_' && idx.name !== 'bookId_1') {
           await bookCollection.dropIndex(idx.name);
-          console.log(`[Auto-Repair] Dropped stale legacy index: ${idx.name}`);
         }
       }
     } catch (idxErr) {}
   })
   .catch(err => console.error('MongoDB connection error:', err));
 
-// --- Schemas & Models ---
 const studentSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   firstName: String,
@@ -194,7 +183,6 @@ async function generateUniqueBookId(level = 'GEN') {
   return bookId;
 }
 
-// --- 1. Kiosk Scan Endpoint ---
 app.post('/api/scan', async (req, res) => {
   const { scanId, seatNumber } = req.body;
   const cleanId = String(scanId || '').trim();
@@ -207,19 +195,19 @@ app.post('/api/scan', async (req, res) => {
       if (activeSession) {
         const checkInTime = new Date(activeSession.checkInTime);
         const secondsElapsed = Math.round((now - checkInTime) / 1000);
-        if (secondsElapsed < 30) return res.status(400).json({ success: false, message: `${staffMember.firstName} already clocked in. Wait ${30 - secondsElapsed}s.` });
-
+        if (secondsElapsed < 30) {
+          return res.status(400).json({ success: false, message: `${staffMember.firstName} already clocked in (${secondsElapsed}s ago). Wait ${30 - secondsElapsed}s.` });
+        }
         const durationMinutes = Math.round((now - checkInTime) / 60000);
         const hours = (durationMinutes / 60).toFixed(2);
         const logEntry = new StaffShiftLog({ role: staffMember.role, id: staffMember.id, lastName: staffMember.lastName, firstName: staffMember.firstName, clockIn: getTime(checkInTime), clockOut: getTime(now), durationMinutes, hoursWorked: parseFloat(hours), date: getDate(now) });
         await logEntry.save();
         await ActiveStaffSession.deleteOne({ id: staffMember.id });
-
         return res.json({ type: "STAFF", action: "CHECK_OUT", firstName: staffMember.firstName, lastName: staffMember.lastName, message: `Staff Clock-Out: ${staffMember.firstName} ${staffMember.lastName} (${hours} hrs worked).`, log: logEntry });
       } else {
         const session = new ActiveStaffSession({ role: staffMember.role, id: staffMember.id, lastName: staffMember.lastName, firstName: staffMember.firstName, checkInTime: now });
         await session.save();
-        return res.json({ type: "STAFF", action: "CHECK_IN", firstName: staffMember.firstName, lastName: staffMember.lastName, message: `Staff Clock-In: ${staffMember.firstName} ${staffMember.lastName}.`, session });
+        return res.json({ type: "STAFF", action: "CHECK_IN", firstName: staffMember.firstName, lastName: staffMember.lastName, message: `Staff Clock-In: ${staffMember.firstName} ${staffMember.lastName} (${staffMember.role}).`, session });
       }
     }
 
@@ -229,23 +217,22 @@ app.post('/api/scan', async (req, res) => {
       if (activeSession) {
         const checkInTime = new Date(activeSession.checkInTime);
         const secondsElapsed = Math.round((now - checkInTime) / 1000);
-        if (secondsElapsed < 30) return res.status(400).json({ success: false, message: `${student.firstName} already checked in. Wait ${30 - secondsElapsed}s.` });
-
+        if (secondsElapsed < 30) {
+          return res.status(400).json({ success: false, message: `${student.firstName} already checked in (${secondsElapsed}s ago). Wait ${30 - secondsElapsed}s.` });
+        }
         const durationMinutes = Math.round((now - checkInTime) / 60000);
         const logEntry = new StudentAttendanceLog({ subject: student.subject, studentId: student.id, lastName: student.lastName, firstName: student.firstName, checkIn: getTime(checkInTime), checkOut: getTime(now), durationMinutes, date: getDate(now) });
         await logEntry.save();
         await ActiveStudentSession.deleteOne({ studentId: student.id });
-
-        return res.json({ type: "STUDENT", action: "CHECK_OUT", firstName: student.firstName, lastName: student.lastName, subject: student.subject, message: `${student.firstName} ${student.lastName} checked out. Time: ${durationMinutes} mins.`, log: logEntry });
+        return res.json({ type: "STUDENT", action: "CHECK_OUT", firstName: student.firstName, lastName: student.lastName, subject: student.subject, message: `${student.firstName} ${student.lastName} checked out. Time in center: ${durationMinutes} mins.`, log: logEntry });
       } else {
         const session = new ActiveStudentSession({ subject: student.subject, studentId: student.id, lastName: student.lastName, firstName: student.firstName, parentPhone: student.parentPhone || '', seatNumber: seatNumber || "Unassigned", checkInTime: now, isReady: false });
         await session.save();
         return res.json({ type: "STUDENT", action: "CHECK_IN", firstName: student.firstName, lastName: student.lastName, subject: student.subject, seatNumber: session.seatNumber, message: `${student.firstName} ${student.lastName} checked in!`, session });
       }
     }
-
-    return res.status(404).json({ success: false, message: `Scanned ID "${cleanId}" not recognized.` });
-  } catch (err) { res.status(500).json({ success: false, message: "Database transaction error." }); }
+    return res.status(404).json({ success: false, message: `Scanned ID "${cleanId}" not recognized as Student or Staff.` });
+  } catch (err) { res.status(500).json({ success: false, message: err.message || "Database error." }); }
 });
 
 app.post('/api/checkout', async (req, res) => {
@@ -254,14 +241,14 @@ app.post('/api/checkout', async (req, res) => {
   const now = new Date();
   try {
     const student = await Student.findOne({ id: cleanId });
-    if (!student) return res.status(404).json({ success: false, message: `Student not found.` });
+    if (!student) return res.status(404).json({ success: false, message: `Student ID "${cleanId}" not found.` });
     const session = await ActiveStudentSession.findOne({ studentId: cleanId });
     const startTime = session ? new Date(session.checkInTime) : now;
     const durationMinutes = Math.round((now - startTime) / 60000);
     const logEntry = new StudentAttendanceLog({ subject: student.subject, studentId: student.id, lastName: student.lastName, firstName: student.firstName, checkIn: session ? getTime(startTime) : getTime(now), checkOut: getTime(now), durationMinutes, date: getDate(now) });
     await logEntry.save();
     if (session) await ActiveStudentSession.deleteOne({ studentId: cleanId });
-    res.json({ success: true, message: `${student.firstName} checked out.`, log: logEntry });
+    res.json({ success: true, message: `${student.firstName} ${student.lastName} checked out. Duration: ${durationMinutes} mins.`, log: logEntry });
   } catch (err) { res.status(500).json({ success: false, message: 'Failed to process checkout.' }); }
 });
 
@@ -270,20 +257,21 @@ app.post('/api/staff-checkout', async (req, res) => {
   const cleanId = String(employeeId || '').trim();
   try {
     const employee = await Employee.findOne({ id: cleanId });
-    if (!employee) return res.status(404).json({ success: false, message: `Employee not found.` });
+    if (!employee) return res.status(404).json({ success: false, message: `Employee ID "${cleanId}" not found.` });
     const session = await ActiveStaffSession.findOne({ id: cleanId });
     const startTime = session ? new Date(session.checkInTime) : new Date();
     let endTime = new Date();
     if (customTime && customTime.trim() !== '') {
       endTime = resolveClockOutDate(startTime, customTime);
       if (!endTime) return res.status(400).json({ success: false, message: 'Invalid time format.' });
+      if (endTime < startTime) return res.status(400).json({ success: false, message: `Departure time cannot be earlier than check-in time.` });
     }
     const durationMinutes = Math.round((endTime - startTime) / 60000);
     const hours = (durationMinutes / 60).toFixed(2);
     const logEntry = new StaffShiftLog({ role: employee.role, id: employee.id, lastName: employee.lastName, firstName: employee.firstName, clockIn: getTime(startTime), clockOut: getTime(endTime), durationMinutes, hoursWorked: parseFloat(hours), date: getDate(startTime) });
     await logEntry.save();
     if (session) await ActiveStaffSession.deleteOne({ id: cleanId });
-    res.json({ success: true, message: `Staff Clock-Out: ${employee.firstName}`, log: logEntry });
+    res.json({ success: true, message: `Staff Clock-Out: ${employee.firstName} ${employee.lastName} (${hours} hrs worked).`, log: logEntry });
   } catch (err) { res.status(500).json({ success: false, message: 'Failed to process staff clock out.' }); }
 });
 
@@ -293,8 +281,8 @@ app.post('/api/ready-pickup', async (req, res) => {
     const session = await ActiveStudentSession.findOne({ studentId: String(studentId || '').trim() });
     if (!session) return res.status(404).json({ success: false, message: "Student is not checked in." });
     session.isReady = true; session.readyTime = getTime(new Date()); await session.save();
-    res.json({ success: true, message: `${session.firstName} marked READY FOR PICKUP!` });
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed to mark student ready.' }); }
+    res.json({ success: true, message: `${session.firstName} ${session.lastName} marked READY FOR PICKUP!` });
+  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
 });
 
 app.get('/api/lobby-board', async (req, res) => {
@@ -313,27 +301,24 @@ app.post('/api/students', async (req, res) => {
   try {
     const student = await Student.findOneAndUpdate({ id }, { subject: subject || "Math", id, lastName: String(lastName || '').trim(), firstName: String(firstName || '').trim(), parentPhone: parentPhone || "" }, { upsert: true, new: true });
     res.json({ success: true, message: `Saved ${firstName} ${lastName}!`, student });
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed to save student.' }); }
+  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
 });
 
 app.put('/api/students/:id', async (req, res) => {
-  const studentId = String(req.params.id || '').trim();
-  const { firstName, lastName, subject, parentPhone, newId } = req.body;
   try {
-    const targetId = newId && String(newId).trim() !== '' ? String(newId).trim() : studentId;
-    const updatedStudent = await Student.findOneAndUpdate({ id: studentId }, { id: targetId, firstName: String(firstName || '').trim(), lastName: String(lastName || '').trim(), subject: subject || 'Math', parentPhone: parentPhone || '' }, { new: true });
-    await ActiveStudentSession.updateMany({ studentId }, { studentId: targetId, firstName: updatedStudent.firstName, lastName: updatedStudent.lastName, subject: updatedStudent.subject, parentPhone: updatedStudent.parentPhone });
+    const targetId = req.body.newId ? String(req.body.newId).trim() : String(req.params.id);
+    const updatedStudent = await Student.findOneAndUpdate({ id: String(req.params.id).trim() }, { id: targetId, firstName: String(req.body.firstName || '').trim(), lastName: String(req.body.lastName || '').trim(), subject: req.body.subject || 'Math', parentPhone: req.body.parentPhone || '' }, { new: true });
+    await ActiveStudentSession.updateMany({ studentId: String(req.params.id) }, { studentId: targetId, firstName: updatedStudent.firstName, lastName: updatedStudent.lastName, subject: updatedStudent.subject, parentPhone: updatedStudent.parentPhone });
     res.json({ success: true, message: `Updated student!` });
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed to update student.' }); }
+  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
 });
 
 app.delete('/api/students/:id', async (req, res) => {
-  const studentId = String(req.params.id || '').trim();
   try {
-    await Student.findOneAndDelete({ id: studentId });
-    await ActiveStudentSession.deleteMany({ studentId });
+    await Student.findOneAndDelete({ id: String(req.params.id).trim() });
+    await ActiveStudentSession.deleteMany({ studentId: String(req.params.id).trim() });
     res.json({ success: true, message: `Student removed.` });
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed to delete student.' }); }
+  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
 });
 
 app.get('/api/students-qr', async (req, res) => {
@@ -347,13 +332,15 @@ app.get('/api/students/:id/book-history', async (req, res) => {
     const studentId = String(req.params.id || '').trim();
     const [currentlyOut, pastLogs] = await Promise.all([ Book.find({ currentHolderId: studentId }).sort({ checkoutDate: -1 }), BookLog.find({ studentId }).sort({ returnDate: -1, _id: -1 }).limit(30) ]);
     res.json({ currentlyOut, pastLogs });
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed to fetch history.' }); }
+  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
 });
 
 app.post('/api/employees', async (req, res) => {
-  const { id, firstName, lastName, role } = req.body;
-  await Employee.findOneAndUpdate({ id: String(id).trim() }, { id: String(id).trim(), firstName: String(firstName || '').trim(), lastName: String(lastName || '').trim(), role: role || "Assistant" }, { upsert: true, new: true });
-  res.json({ success: true, message: `Saved employee!` });
+  try {
+    const { id, firstName, lastName, role } = req.body;
+    await Employee.findOneAndUpdate({ id: String(id).trim() }, { id: String(id).trim(), firstName: String(firstName || '').trim(), lastName: String(lastName || '').trim(), role: role || "Assistant" }, { upsert: true, new: true });
+    res.json({ success: true, message: `Saved employee!` });
+  } catch(e) { res.status(500).json({ success: false }); }
 });
 
 app.put('/api/employees/:id', async (req, res) => {
@@ -415,10 +402,7 @@ app.get('/api/payroll-summary', async (req, res) => {
 app.post('/api/reset-payroll', async (req, res) => { await StaffShiftLog.deleteMany({}); res.json({ success: true, message: "Reset." }); });
 
 app.get('/api/staff-shift-logs', async (req, res) => {
-  try {
-    const query = req.query.employeeId ? { id: req.query.employeeId } : {};
-    res.json(await StaffShiftLog.find(query).sort({ date: -1, _id: -1 }));
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
+  try { res.json(await StaffShiftLog.find(req.query.employeeId ? { id: req.query.employeeId } : {}).sort({ date: -1, _id: -1 })); } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.put('/api/staff-shift-logs/:id', async (req, res) => {
@@ -428,12 +412,12 @@ app.put('/api/staff-shift-logs/:id', async (req, res) => {
     if (req.body.clockOut) updateFields.clockOut = req.body.clockOut.trim();
     if (req.body.date) updateFields.date = req.body.date.trim();
     const updatedLog = await StaffShiftLog.findByIdAndUpdate(req.params.id, updateFields, { new: true });
-    res.json({ success: true, message: 'Updated.', log: updatedLog });
-  } catch (err) { res.status(500).json({ success: false, message: 'Failed.' }); }
+    res.json({ success: true, log: updatedLog });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.delete('/api/staff-shift-logs/:id', async (req, res) => {
-  try { await StaffShiftLog.findByIdAndDelete(req.params.id); res.json({ success: true, message: 'Deleted.' }); } catch (err) { res.status(500).json({ success: false }); }
+  try { await StaffShiftLog.findByIdAndDelete(req.params.id); res.json({ success: true }); } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.get('/api/student-attendance-logs', async (req, res) => {
@@ -448,8 +432,7 @@ app.get('/api/student-attendance-logs', async (req, res) => {
 
 app.put('/api/student-attendance-logs/:id', async (req, res) => {
   try {
-    const updateFields = { ...req.body };
-    const updatedLog = await StudentAttendanceLog.findByIdAndUpdate(req.params.id, updateFields, { new: true });
+    const updatedLog = await StudentAttendanceLog.findByIdAndUpdate(req.params.id, { ...req.body }, { new: true });
     res.json({ success: true, log: updatedLog });
   } catch (err) { res.status(500).json({ success: false }); }
 });
@@ -466,7 +449,6 @@ app.get('/api/books-qr', async (req, res) => {
     let filter = {};
     if (rawCenter.toLowerCase() === 'camarillo') filter = { center: { $regex: /^camarillo$/i } };
     else if (rawCenter.toLowerCase() === 'thousand oaks') filter = { $or: [{ center: { $regex: /^thousand oaks$/i } }, { center: { $exists: false } }, { center: null }, { center: '' }] };
-    
     const books = await Book.find(filter).lean();
     const list = await Promise.all(books.map(async b => ({ ...b, center: b.center || 'Thousand Oaks', qrCode: await QRCode.toDataURL(String(b.bookId)) })));
     res.json(list);
@@ -474,7 +456,7 @@ app.get('/api/books-qr', async (req, res) => {
 });
 
 app.post('/api/books/bulk-center', async (req, res) => {
-  try { await Book.updateMany({ bookId: { $in: req.body.bookIds } }, { $set: { center: String(req.body.center).trim() } }); res.json({ success: true, message: `Updated books to ${req.body.center}!` }); } catch (err) { res.status(500).json({ success: false }); }
+  try { await Book.updateMany({ bookId: { $in: req.body.bookIds } }, { $set: { center: String(req.body.center).trim() } }); res.json({ success: true, message: `Updated books!` }); } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.post('/api/books/bulk-delete', async (req, res) => {
@@ -490,7 +472,7 @@ app.post('/api/books/delete-all', async (req, res) => {
 });
 
 // ==========================================
-// CSV BOOK UPLOAD
+// CSV BOOK UPLOAD 
 // ==========================================
 app.post('/api/upload-books', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No CSV file uploaded.' });
@@ -534,7 +516,6 @@ app.post('/api/upload-books', upload.single('file'), async (req, res) => {
     .on('error', (err) => res.status(500).json({ success: false, message: 'Failed to parse CSV.' }));
 });
 
-// Book Scan / Return endpoints
 app.post('/api/books/scan', async (req, res) => {
   const { barcode, studentId } = req.body;
   try {
@@ -579,6 +560,23 @@ app.post('/api/books', async (req, res) => {
 });
 app.delete('/api/books/:id', async (req, res) => {
   await Book.findOneAndDelete({ bookId: req.params.id }); res.json({ success: true });
+});
+
+// Extra analytics and export routes
+app.get('/api/export/student-logs', async (req, res) => {
+  try {
+    const logs = await StudentAttendanceLog.find().sort({ date: -1 });
+    const rows = logs.map(l => `"${l.date}","${l.studentId}","${l.firstName}","${l.lastName}","${l.subject}","${l.checkIn}","${l.checkOut}",${l.durationMinutes}`);
+    res.header('Content-Type', 'text/csv').send(['Date,ID,First,Last,Subject,In,Out,Duration'].concat(rows).join('\n'));
+  } catch (e) { res.status(500).send('Error'); }
+});
+
+app.get('/api/export/book-inventory', async (req, res) => {
+  try {
+    const books = await Book.find().sort({ level: 1 });
+    const rows = books.map(b => `"${b.bookId}","${b.title}","${b.level}","${b.status}","${b.center}"`);
+    res.header('Content-Type', 'text/csv').send(['ID,Title,Level,Status,Center'].concat(rows).join('\n'));
+  } catch (e) { res.status(500).send('Error'); }
 });
 
 app.listen(process.env.PORT || 3000, () => console.log(`Kumon Server running`));
