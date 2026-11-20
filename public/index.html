@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.47)</title>
+  <title>Kumon Center Management System (v1.49)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -89,7 +89,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.47</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.49</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -106,7 +106,7 @@
     <div class="view-card no-print">
       <h2>Scan In / Scan Out</h2>
       <div style="display: flex; gap: 0.5rem; max-width: 550px;">
-        <input type="text" id="scanInput" list="globalEntityDatalist" placeholder="Scan barcode or type name / ID..." oninput="handleDatalistSelection(this, 'kiosk')" autocomplete="off" autofocus />
+        <input type="text" id="scanInput" placeholder="Scan barcode or type name / ID..." oninput="handleDatalistSelection(this, 'kiosk')" autocomplete="off" autofocus />
         <datalist id="globalEntityDatalist"></datalist>
         <button class="btn-action" onclick="handleScan()">Submit</button>
       </div>
@@ -191,13 +191,13 @@
     <div class="view-card no-print">
       <h2>Book Check-In / Check-Out Station</h2>
       <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-        <input type="text" id="bookScanInput" list="bookTitleDatalist" placeholder="Scan barcode or type title..." oninput="handleBookTitleSelection(this)" style="width: 250px;" autocomplete="off" autofocus />
+        <input type="text" id="bookScanInput" placeholder="Scan barcode or type title..." oninput="handleBookTitleSelection(this)" style="width: 250px;" autocomplete="off" autofocus />
         <datalist id="bookTitleDatalist"></datalist>
 
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.47)</option>
+            <option value="all">View All Centers (v1.49)</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -209,7 +209,7 @@
           </div>
         </div>
 
-        <input type="text" id="bookStudentScanInput" list="globalEntityDatalist" placeholder="Type student name or scan ID..." oninput="handleDatalistSelection(this, 'book')" style="width: 260px;" autocomplete="off" />
+        <input type="text" id="bookStudentScanInput" placeholder="Type student name or scan ID..." oninput="handleDatalistSelection(this, 'book')" style="width: 260px;" autocomplete="off" />
         <button class="btn-action" onclick="handleBookScan()">Process Checkout / Return</button>
         <button class="btn-warning" onclick="clearBookInputs()">Clear</button>
       </div>
@@ -480,7 +480,7 @@
     
     const html = `
       <div class="info">
-        <div class="tag" style="display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px;"><span class="pill" >${levelNumberLabel}</span></div>
+        <div class="tag" style="display: flex; gap: 6px; font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 2px;"><span class="pill">${levelNumberLabel}</span></div>
         <div class="title" style="font-size: 13px; font-weight: 800; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.68in;">${safeTitle}</div>
         <div class="id" style="font-size: 9px; color: #888; font-family: monospace; margin-top: 2px;">${id}</div>
       </div>
@@ -589,7 +589,11 @@
     if (dl) dl.innerHTML = (allBooksList || []).map(b => `<option value="${b.bookId}">${b.title} [${b.level}${b.bookNumber ? ' #'+b.bookNumber : ''}] — ${b.bookId}</option>`).join('');
   }
 
+  // V1.48: HIDE DATALIST UNTIL TYPED
   function handleDatalistSelection(inputEl, ctx = 'kiosk') {
+    if (inputEl.value.length > 0) inputEl.setAttribute('list', 'globalEntityDatalist');
+    else inputEl.removeAttribute('list');
+    
     const v = inputEl.value.trim(); if (!v) return;
     let id = null;
     const m = (allStudents||[]).find(s=>s.id.toLowerCase()===v.toLowerCase()) || (allStaff||[]).find(e=>e.id.toLowerCase()===v.toLowerCase());
@@ -603,6 +607,9 @@
   }
 
   function handleBookTitleSelection(inputEl) {
+    if (inputEl.value.length > 0) inputEl.setAttribute('list', 'bookTitleDatalist');
+    else inputEl.removeAttribute('list');
+    
     const v = inputEl.value.trim(); if (!v) return;
     const f = v.match(/—\s*([A-Za-z0-9_-]+)$/);
     if (f) inputEl.value = f[1].trim();
@@ -702,15 +709,36 @@
   function filterBadges() { const q = document.getElementById('badgeSearch').value.toLowerCase(); renderBadges(allStudents.filter(s => `${s.firstName} ${s.lastName} ${s.id}`.toLowerCase().includes(q))); }
   async function deleteStudent(id) { if(confirm('Delete?')) { await fetch(`/api/students/${id}`, {method:'DELETE'}); loadBadges(); } }
 
+  // ==============================================
+  // V1.49: GLOBAL BACKGROUND DATA LOAD
+  // ==============================================
   window.__V141_ACTIVE_CENTER__ = 'all';
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Dropdown Logic
     const newDropdown = document.getElementById('v141BookCenterFilter');
     if (newDropdown) {
       newDropdown.addEventListener('change', (e) => {
         window.__V141_ACTIVE_CENTER__ = e.target.value;
         loadBooks();
       });
+    }
+
+    // NEW: Fetch all data arrays immediately on page load so Datalists are ready instantly
+    try {
+      const [stdRes, staffRes, bookRes] = await Promise.all([
+        fetch('/api/students-qr'),
+        fetch('/api/employees-qr'),
+        fetch('/api/books-qr?center=all')
+      ]);
+      allStudents = await stdRes.json();
+      allStaff = await staffRes.json();
+      allBooksList = window.sortKumonBooks(await bookRes.json());
+      
+      refreshGlobalDatalist();
+      refreshBookTitleDatalist();
+    } catch(err) {
+      console.error("Failed initial data load for datalists:", err);
     }
   });
 
