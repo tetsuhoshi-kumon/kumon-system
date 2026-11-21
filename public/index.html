@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.49)</title>
+  <title>Kumon Center Management System (v1.50)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -89,7 +89,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.49</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.50</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -154,7 +154,7 @@
       <div class="toolbar-box">
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
           <label style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
-          <select id="startSlotSelect" style="width: 140px;" onchange="applyStickerOffset()"></select>
+          <select id="startSlotSelect" style="width: 170px;" onchange="applyStickerOffset()"></select>
           <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetStickerOffset()">Reset Slot 1</button>
         </div>
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -165,7 +165,7 @@
         </div>
       </div>
       
-      <!-- V1.46 RESTORED: ADD STUDENT -->
+      <!-- ADD STUDENT -->
       <div style="margin-top: 1rem; background: #fafafa; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px;">
         <h4 style="margin: 0 0 0.5rem 0;">Register New Student</h4>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
@@ -180,7 +180,6 @@
           <button class="btn-success" onclick="addStudent()">Save Student</button>
         </div>
       </div>
-      <!-- END ADD STUDENT -->
 
     </div>
     <div id="badgeContainer"></div>
@@ -197,7 +196,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.49)</option>
+            <option value="all">View All Centers (v1.50)</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -226,7 +225,7 @@
       </table>
     </div>
     
-    <!-- V1.46 RESTORED: ADD BOOK -->
+    <!-- ADD BOOK -->
     <div class="view-card no-print">
       <h3>Register New Book</h3>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;">
@@ -242,7 +241,6 @@
         <button class="btn-success" onclick="addNewBook()">Save to Library</button>
       </div>
     </div>
-    <!-- END ADD BOOK -->
 
     <div class="view-card">
       <div class="no-print" style="margin-bottom: 1rem;">
@@ -250,7 +248,7 @@
         <div class="toolbar-box">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <label style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
-            <select id="startSlotSelectBook" style="width: 140px;" onchange="applyBookStickerOffset()"></select>
+            <select id="startSlotSelectBook" style="width: 170px;" onchange="applyBookStickerOffset()"></select>
             <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetBookStickerOffset()">Reset Slot 1</button>
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -265,6 +263,7 @@
     </div>
   </div>
 
+  <!-- STAFF & PAYROLL TAB -->
   <div id="staff" class="tab-content">
     <div class="view-card no-print">
       <h2>Staff Management</h2>
@@ -280,6 +279,25 @@
     <div class="view-card no-print">
       <h3>Staff Currently on Duty</h3>
       <table id="activeStaffTable"><thead><tr><th>Name</th><th>Role</th><th>Clocked In At</th><th>Time on Duty</th><th>Action</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="view-card">
+      <div class="no-print" style="margin-bottom: 1rem;">
+        <h3>Staff ID Badges</h3>
+        <div class="toolbar-box">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <label style="font-weight: bold; font-size: 0.9rem;">Start on Sticker #:</label>
+            <select id="startSlotSelectStaff" style="width: 170px;" onchange="applyStaffStickerOffset()"></select>
+            <button class="btn-danger" style="font-size: 12px; padding: 0.5rem 0.7rem;" onclick="resetStaffStickerOffset()">Reset Slot 1</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-action" style="font-size: 13px;" onclick="selectAllStaff(true)">Select All</button>
+            <button class="btn-danger" style="font-size: 13px;" onclick="selectAllStaff(false)">Clear Selection</button>
+            <button class="btn-success" style="font-size: 13px; font-weight: bold;" onclick="printSelectedStaffBadges()">🖨️ Print Selected (<span id="selectedStaffCount">0</span>)</button>
+            <button class="btn-action" style="font-size: 13px;" onclick="printAllStaffBadges()">Print All</button>
+          </div>
+        </div>
+      </div>
+      <div id="staffBadgeContainer"></div>
     </div>
   </div>
 
@@ -392,8 +410,12 @@
   }
 
   // ==============================================================
-  // V1.45: PERFECT ISOLATED PRINTING METHOD
+  // V1.50: SLOT LABEL FORMATTING & STAFF PRINT FIXES
   // ==============================================================
+  function getSlotLabel(i) {
+    return `Slot ${i} (Row ${Math.ceil(i/3)}, Col ${((i-1)%3)+1})`;
+  }
+
   function openIsolatedPrintWindow(htmlContent, titleText) {
     const printWindow = window.open('', '_blank', 'width=850,height=1100');
     printWindow.document.write(`
@@ -421,10 +443,9 @@
             .badge-spacer { visibility: hidden; height: 1.0in; width: 2.625in; border: none; }
             .badge-qr { width: 0.78in; height: 0.78in; flex-shrink: 0; margin-left: 0; }
             
-            /* Universal No-Print for UI elements that might slip through */
             .no-print { display: none !important; }
             
-            /* Book Badges Specific */
+            /* Book Badges */
             .book-badge-info { font-size: 11px; line-height: 1.1; max-width: 1.6in; display: flex; flex-direction: column; justify-content: center; overflow: hidden; height: 0.84in; }
             .book-tag-pill { font-size: 13px; font-weight: 900; color: #1d6fa5; text-transform: uppercase; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;}
             .book-title-line { font-size: 12px; font-weight: 800; color: #111; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.6in; margin-bottom: 1px;}
@@ -433,7 +454,7 @@
             .center-sticker-tag.camarillo { color: #1a5276; }
             .center-sticker-tag.thousand-oaks { color: #0e6251; }
             
-            /* Student Badges Specific */
+            /* Student & Staff Badges */
             .badge-info { font-size: 11px; line-height: 1.05; overflow: hidden; max-width: 1.6in; display: flex; flex-direction: column; justify-content: center; }
             .badge-name-last { font-size: 20px; font-weight: 900; line-height: 1.05; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
             .badge-name-first { font-size: 16px; font-weight: 700; line-height: 1.05; letter-spacing: -0.2px; margin-top: 1px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; }
@@ -449,28 +470,31 @@
     printWindow.document.close();
   }
   
+  // -- BOOK BADGES
+  function populateBookSlotDropdown() {
+    const sel = document.getElementById('startSlotSelectBook'); if (!sel || sel.children.length > 0) return;
+    for (let i=1; i<=30; i++) sel.innerHTML += `<option value="${i}">${getSlotLabel(i)}</option>`;
+  }
+  function applyBookStickerOffset() { currentBookStartSlot = parseInt(document.getElementById('startSlotSelectBook').value)||1; renderBookBadges(allBooksList); }
+  function resetBookStickerOffset() { currentBookStartSlot = 1; document.getElementById('startSlotSelectBook').value = 1; renderBookBadges(allBooksList); }
+  function selectAllBooks(sel) { 
+    sel ? allBooksList.forEach(b => selectedBookIds.add(b.bookId)) : selectedBookIds.clear(); 
+    document.getElementById('selectedBookCount').textContent = selectedBookIds.size;
+    renderBookBadges(allBooksList); 
+  }
+  function toggleSelectBook(id) { 
+    selectedBookIds.has(id) ? selectedBookIds.delete(id) : selectedBookIds.add(id); 
+    document.getElementById('selectedBookCount').textContent = selectedBookIds.size; 
+  }
+  
   function printAllBookBadges() { 
     openIsolatedPrintWindow(document.getElementById('bookBadgeContainer').innerHTML, 'Print All Book Labels'); 
   }
-  
   function printSelectedBookBadges() { 
     if(selectedBookIds.size === 0) return alert('Select books first.');
-    const originalHtml = document.getElementById('bookBadgeContainer').innerHTML;
     renderBookBadges(allBooksList.filter(b => selectedBookIds.has(b.bookId)));
     openIsolatedPrintWindow(document.getElementById('bookBadgeContainer').innerHTML, 'Print Selected Book Labels');
-    document.getElementById('bookBadgeContainer').innerHTML = originalHtml;
-  }
-  
-  function printAllBadges() { 
-    openIsolatedPrintWindow(document.getElementById('badgeContainer').innerHTML, 'Print All Student Labels'); 
-  }
-  
-  function printSelectedBadges() { 
-    if(selectedStudentIds.size === 0) return alert('Select students first.');
-    const originalHtml = document.getElementById('badgeContainer').innerHTML;
-    renderBadges(allStudents.filter(s => selectedStudentIds.has(s.id))); 
-    openIsolatedPrintWindow(document.getElementById('badgeContainer').innerHTML, 'Print Selected Student Labels'); 
-    document.getElementById('badgeContainer').innerHTML = originalHtml;
+    renderBookBadges(allBooksList);
   }
   
   window.printSingleBookBadge = function(title, author, level, number, id, qrCode) {
@@ -508,8 +532,58 @@
     printWindow.document.close();
   };
 
-  // ==============================================================
-  // V1.46 - RESTORED MISSING ADD STUDENT / ADD BOOK FUNCTIONS
+  // -- STUDENT BADGES
+  function populateSlotDropdown() {
+    const sel = document.getElementById('startSlotSelect'); if (!sel || sel.children.length > 0) return;
+    for (let i=1; i<=30; i++) sel.innerHTML += `<option value="${i}">${getSlotLabel(i)}</option>`;
+  }
+  function applyStickerOffset() { currentStartSlot = parseInt(document.getElementById('startSlotSelect').value)||1; renderBadges(allStudents); }
+  function resetStickerOffset() { currentStartSlot = 1; document.getElementById('startSlotSelect').value = 1; renderBadges(allStudents); }
+  function toggleSelectStudent(id) { 
+    selectedStudentIds.has(id) ? selectedStudentIds.delete(id) : selectedStudentIds.add(id); 
+    document.getElementById('selectedCount').textContent = selectedStudentIds.size; 
+  }
+  function selectAllStudents(select) { 
+    select ? allStudents.forEach(s => selectedStudentIds.add(s.id)) : selectedStudentIds.clear(); 
+    document.getElementById('selectedCount').textContent = selectedStudentIds.size;
+    renderBadges(allStudents); 
+  }
+  function printAllBadges() { 
+    openIsolatedPrintWindow(document.getElementById('badgeContainer').innerHTML, 'Print All Student Labels'); 
+  }
+  function printSelectedBadges() { 
+    if(selectedStudentIds.size === 0) return alert('Select students first.');
+    renderBadges(allStudents.filter(s => selectedStudentIds.has(s.id))); 
+    openIsolatedPrintWindow(document.getElementById('badgeContainer').innerHTML, 'Print Selected Student Labels'); 
+    renderBadges(allStudents);
+  }
+  
+  // -- STAFF BADGES
+  function populateStaffSlotDropdown() {
+    const sel = document.getElementById('startSlotSelectStaff'); if (!sel || sel.children.length > 0) return;
+    for (let i=1; i<=30; i++) sel.innerHTML += `<option value="${i}">${getSlotLabel(i)}</option>`;
+  }
+  function applyStaffStickerOffset() { currentStaffStartSlot = parseInt(document.getElementById('startSlotSelectStaff').value)||1; renderStaffBadges(allStaff); }
+  function resetStaffStickerOffset() { currentStaffStartSlot = 1; document.getElementById('startSlotSelectStaff').value = 1; renderStaffBadges(allStaff); }
+  function toggleSelectStaff(id) { 
+    selectedStaffIds.has(id) ? selectedStaffIds.delete(id) : selectedStaffIds.add(id); 
+    document.getElementById('selectedStaffCount').textContent = selectedStaffIds.size; 
+  }
+  function selectAllStaff(select) { 
+    select ? allStaff.forEach(s => selectedStaffIds.add(s.id)) : selectedStaffIds.clear(); 
+    document.getElementById('selectedStaffCount').textContent = selectedStaffIds.size;
+    renderStaffBadges(allStaff); 
+  }
+  function printAllStaffBadges() { 
+    openIsolatedPrintWindow(document.getElementById('staffBadgeContainer').innerHTML, 'Print All Staff Labels'); 
+  }
+  function printSelectedStaffBadges() { 
+    if(selectedStaffIds.size === 0) return alert('Select staff first.');
+    renderStaffBadges(allStaff.filter(s => selectedStaffIds.has(s.id))); 
+    openIsolatedPrintWindow(document.getElementById('staffBadgeContainer').innerHTML, 'Print Selected Staff Labels'); 
+    renderStaffBadges(allStaff);
+  }
+
   // ==============================================================
 
   function generateStudentTempId() {
@@ -574,7 +648,6 @@
     }
   }
 
-
   function refreshGlobalDatalist() {
     const dl = document.getElementById('globalEntityDatalist');
     if (!dl) return;
@@ -589,7 +662,6 @@
     if (dl) dl.innerHTML = (allBooksList || []).map(b => `<option value="${b.bookId}">${b.title} [${b.level}${b.bookNumber ? ' #'+b.bookNumber : ''}] — ${b.bookId}</option>`).join('');
   }
 
-  // V1.48: HIDE DATALIST UNTIL TYPED
   function handleDatalistSelection(inputEl, ctx = 'kiosk') {
     if (inputEl.value.length > 0) inputEl.setAttribute('list', 'globalEntityDatalist');
     else inputEl.removeAttribute('list');
@@ -687,21 +759,19 @@
     document.querySelector('#studyingTable tbody').innerHTML = data.studying.map(s => `<tr><td>${s.firstName} ${s.lastNameInitial}</td><td>${s.seatNumber}</td><td>${formatSubjectPill(s.subject)}</td></tr>`).join('');
   }
   
-  function populateSlotDropdown() {
-    const sel = document.getElementById('startSlotSelect'); if (sel.children.length > 0) return;
-    for (let i=1; i<=30; i++) sel.innerHTML += `<option value="${i}">Slot ${i}</option>`;
+  async function loadBadges() { 
+    allStudents = await (await fetch('/api/students-qr')).json(); 
+    populateSlotDropdown(); 
+    refreshGlobalDatalist(); 
+    renderBadges(allStudents); 
   }
-  function applyStickerOffset() { currentStartSlot = parseInt(document.getElementById('startSlotSelect').value)||1; filterBadges(); }
-  function resetStickerOffset() { currentStartSlot = 1; document.getElementById('startSlotSelect').value = 1; filterBadges(); }
-  async function loadBadges() { allStudents = await (await fetch('/api/students-qr')).json(); populateSlotDropdown(); refreshGlobalDatalist(); renderBadges(allStudents); }
-  function toggleSelectStudent(id) { selectedStudentIds.has(id) ? selectedStudentIds.delete(id) : selectedStudentIds.add(id); document.getElementById('selectedCount').textContent = selectedStudentIds.size; }
-  function selectAllStudents(select) { select ? allStudents.forEach(s => selectedStudentIds.add(s.id)) : selectedStudentIds.clear(); renderBadges(allStudents); }
   
   function renderBadges(list) {
     const items = []; for (let i=1; i<currentStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
     list.forEach(s => {
       const qrHtml = s.qrCode ? `<img class="badge-qr" src="${s.qrCode}" />` : '';
-      items.push(`<div class="badge-card"><div class="no-print" style="position:absolute;top:4px;right:4px;"><input type="checkbox" ${selectedStudentIds.has(s.id)?'checked':''} onchange="toggleSelectStudent('${s.id}')" /><button class="chip-btn" style="background:#e74c3c;" onclick="deleteStudent('${s.id}')">✕</button></div><div class="badge-info"><div class="badge-name-last">${s.lastName}</div><div class="badge-name-first">${s.firstName}</div><div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div></div>${qrHtml}</div>`);
+      const isChecked = selectedStudentIds.has(s.id) ? 'checked' : '';
+      items.push(`<div class="badge-card"><div class="no-print" style="position:absolute;top:4px;right:4px;"><input type="checkbox" ${isChecked} onchange="toggleSelectStudent('${s.id}')" /><button class="chip-btn" style="background:#e74c3c;" onclick="deleteStudent('${s.id}')">✕</button></div><div class="badge-info"><div class="badge-name-last">${s.lastName}</div><div class="badge-name-first">${s.firstName}</div><div class="badge-tag-line">${formatSubjectBadge(s.subject)}</div></div>${qrHtml}</div>`);
     });
     const pages = []; for (let i=0; i<items.length; i+=30) pages.push(`<div class="sheet-page">${items.slice(i, i+30).join('')}</div>`);
     document.getElementById('badgeContainer').innerHTML = pages.join('');
@@ -709,13 +779,9 @@
   function filterBadges() { const q = document.getElementById('badgeSearch').value.toLowerCase(); renderBadges(allStudents.filter(s => `${s.firstName} ${s.lastName} ${s.id}`.toLowerCase().includes(q))); }
   async function deleteStudent(id) { if(confirm('Delete?')) { await fetch(`/api/students/${id}`, {method:'DELETE'}); loadBadges(); } }
 
-  // ==============================================
-  // V1.49: GLOBAL BACKGROUND DATA LOAD
-  // ==============================================
   window.__V141_ACTIVE_CENTER__ = 'all';
 
   document.addEventListener('DOMContentLoaded', async () => {
-    // Dropdown Logic
     const newDropdown = document.getElementById('v141BookCenterFilter');
     if (newDropdown) {
       newDropdown.addEventListener('change', (e) => {
@@ -724,7 +790,6 @@
       });
     }
 
-    // NEW: Fetch all data arrays immediately on page load so Datalists are ready instantly
     try {
       const [stdRes, staffRes, bookRes] = await Promise.all([
         fetch('/api/students-qr'),
@@ -763,6 +828,7 @@
       const res = await fetch('/api/books-qr?center=' + encodeURIComponent(centerFilter));
       const rawBooks = await res.json();
       allBooksList = window.sortKumonBooks(rawBooks);
+      populateBookSlotDropdown();
       refreshBookTitleDatalist();
       renderBorrowedBooksTable();
       renderBookBadges(allBooksList);
@@ -817,14 +883,6 @@
   }
   async function directReturnBook(id) { await fetch('/api/books/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barcode: id }) }); loadBooks(); }
   
-  function populateBookSlotDropdown() {
-    const sel = document.getElementById('startSlotSelectBook'); if (sel.children.length > 0) return;
-    for (let i=1; i<=30; i++) sel.innerHTML += `<option value="${i}">Slot ${i}</option>`;
-  }
-  function applyBookStickerOffset() { currentBookStartSlot = parseInt(document.getElementById('startSlotSelectBook').value)||1; renderBookBadges(allBooksList); }
-  function resetBookStickerOffset() { currentBookStartSlot = 1; document.getElementById('startSlotSelectBook').value = 1; renderBookBadges(allBooksList); }
-  function selectAllBooks(sel) { sel ? allBooksList.forEach(b => selectedBookIds.add(b.bookId)) : selectedBookIds.clear(); renderBookBadges(allBooksList); }
-  
   function renderBookBadges(list) {
     const sorted = window.sortKumonBooks(list);
     const items = []; for (let i=1; i<currentBookStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
@@ -839,7 +897,7 @@
       
       const html = `<div class="badge-card">
           <div class="no-print" style="position:absolute;top:4px;right:4px;">
-            <input type="checkbox" ${isChecked} onchange="if(this.checked) selectedBookIds.add('${b.bookId}'); else selectedBookIds.delete('${b.bookId}');" />
+            <input type="checkbox" ${isChecked} onchange="toggleSelectBook('${b.bookId}')" />
             <button class="chip-btn" style="background:#e74c3c;" onclick="deleteBook('${b.bookId}')">✕</button>
           </div>
           <div class="book-badge-info">
@@ -874,7 +932,9 @@
   async function loadStaff() {
     allStaff = await (await fetch('/api/employees-qr')).json();
     document.querySelector('#staffRosterTable tbody').innerHTML = allStaff.map(e => `<tr><td>${e.id}</td><td>${e.firstName} ${e.lastName}</td><td>${e.role}</td><td><button class="btn-danger" onclick="deleteStaff('${e.id}')">Del</button></td></tr>`).join('');
+    populateStaffSlotDropdown();
     refreshActiveStaff();
+    renderStaffBadges(allStaff);
   }
   async function refreshActiveStaff() {
     const data = await (await fetch('/api/active-staff')).json();
@@ -886,6 +946,27 @@
     loadStaff();
   }
   async function deleteStaff(id) { if(confirm('Delete?')) { await fetch(`/api/employees/${id}`, {method:'DELETE'}); loadStaff(); } }
+
+  function renderStaffBadges(list) {
+    const items = []; for (let i=1; i<currentStaffStartSlot; i++) items.push(`<div class="badge-card badge-spacer"></div>`);
+    list.forEach(s => {
+      const qrHtml = s.qrCode ? `<img class="badge-qr" src="${s.qrCode}" />` : '';
+      const isChecked = selectedStaffIds.has(s.id) ? 'checked' : '';
+      items.push(`<div class="badge-card">
+        <div class="no-print" style="position:absolute;top:4px;right:4px;">
+          <input type="checkbox" ${isChecked} onchange="toggleSelectStaff('${s.id}')" />
+        </div>
+        <div class="badge-info">
+          <div class="badge-name-last">${s.lastName}</div>
+          <div class="badge-name-first">${s.firstName}</div>
+          <div class="badge-tag-line" style="color:#27ae60; font-weight:bold;">${s.role}</div>
+        </div>
+        ${qrHtml}
+      </div>`);
+    });
+    const pages = []; for (let i=0; i<items.length; i+=30) pages.push(`<div class="sheet-page">${items.slice(i, i+30).join('')}</div>`);
+    document.getElementById('staffBadgeContainer').innerHTML = pages.join('');
+  }
   
   async function uploadBookCSV() {
     const file = document.getElementById('bookCsvFileInput').files[0]; if(!file) return alert("Select a CSV file first!");
