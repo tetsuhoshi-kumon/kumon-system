@@ -64,7 +64,8 @@ const studentSchema = new mongoose.Schema({
   lastName: String,
   subject: { type: String, default: 'Math' },
   parentPhone: String,
-  center: { type: String, default: 'Thousand Oaks' }
+  center: { type: String, default: 'Thousand Oaks' },
+  createdAt: { type: Date, default: Date.now }
 });
 
 const studentAttendanceLogSchema = new mongoose.Schema({
@@ -484,7 +485,7 @@ app.post('/api/upload-books', upload.single('file'), async (req, res) => {
     .pipe(csv())
     .on('data', (data) => results.push(data))
     .on('end', async () => {
-      let added = 0; let skipped = 0; let errors = 0;
+      let added = 0; let skipped = 0; let errors = 0; const addedBookIds = [];
       for (const row of results) {
         const title = row['Title'] || row['title'] || row['TITLE'] || '';
         const author = row['Author'] || row['author'] || row['AUTHOR'] || '';
@@ -506,12 +507,13 @@ app.post('/api/upload-books', upload.single('file'), async (req, res) => {
             }
           } else { bookId = String(bookId).trim(); }
 
-          await Book.findOneAndUpdate({ bookId }, { bookId, title: String(title).trim(), author: String(author).trim(), level: String(level).trim(), bookNumber: String(bookNumber).trim(), center: finalCenter }, { upsert: true, new: true });
+          await Book.findOneAndUpdate({ bookId }, { bookId, title: String(title).trim(), author: String(author).trim(), level: String(level).trim(), bookNumber: String(bookNumber).trim(), center: finalCenter, createdAt: new Date() }, { upsert: true, new: true });
+          addedBookIds.push(bookId);
           added++;
         } catch (dbErr) { errors++; }
       }
       try { fs.unlinkSync(req.file.path); } catch (fsErr) {}
-      res.json({ success: true, message: `CSV Processed! ${added} books saved. ${skipped > 0 ? skipped + ' skipped.' : ''} ${errors > 0 ? errors + ' errors.' : ''}` });
+      res.json({ success: true, addedBookIds, message: `CSV Processed! ${added} books saved. ${skipped > 0 ? skipped + ' skipped.' : ''} ${errors > 0 ? errors + ' errors.' : ''}` });
     })
     .on('error', (err) => res.status(500).json({ success: false, message: 'Failed to parse CSV.' }));
 });
@@ -553,10 +555,13 @@ app.post('/api/books/scan', async (req, res) => {
 
 app.post('/api/books', async (req, res) => {
   try {
-    const b = new Book({ bookId: req.body.bookId, title: req.body.title, author: req.body.author, level: req.body.level, bookNumber: req.body.bookNumber, center: req.body.center });
+    const cleanId = req.body.bookId && String(req.body.bookId).trim() !== ''
+      ? String(req.body.bookId).trim()
+      : await generateUniqueBookId(req.body.level || 'GEN');
+    const b = new Book({ bookId: cleanId, title: req.body.title, author: req.body.author, level: req.body.level, bookNumber: req.body.bookNumber, center: req.body.center, createdAt: new Date() });
     await b.save();
     res.json({ success: true, book: b });
-  } catch (e) { res.status(500).json({ success: false }); }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 app.delete('/api/books/:id', async (req, res) => {
   await Book.findOneAndDelete({ bookId: req.params.id }); res.json({ success: true });
