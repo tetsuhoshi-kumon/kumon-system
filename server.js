@@ -1,6 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const QRCode = require('qrcode');
+const qrCache = new Map();
+async function getCachedQR(text) {
+  const key = String(text);
+  if (qrCache.has(key)) return qrCache.get(key);
+  const dataUrl = await QRCode.toDataURL(key);
+  qrCache.set(key, dataUrl);
+  return dataUrl;
+}
 const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
@@ -323,8 +331,9 @@ app.delete('/api/students/:id', async (req, res) => {
 });
 
 app.get('/api/students-qr', async (req, res) => {
-  const students = await Student.find().sort({ lastName: 1, firstName: 1 });
-  const list = await Promise.all(students.map(async s => ({ ...s.toObject(), qrCode: await QRCode.toDataURL(String(s.id)) })));
+  const students = await Student.find().sort({ lastName: 1, firstName: 1 }).lean();
+  if (req.query.lite === '1') return res.json(students);
+  const list = await Promise.all(students.map(async s => ({ ...s, qrCode: await getCachedQR(s.id) })));
   res.json(list);
 });
 
@@ -361,8 +370,9 @@ app.delete('/api/employees/:id', async (req, res) => {
 });
 
 app.get('/api/employees-qr', async (req, res) => {
-  const employees = await Employee.find().sort({ lastName: 1, firstName: 1 });
-  const list = await Promise.all(employees.map(async e => ({ ...e.toObject(), qrCode: await QRCode.toDataURL(String(e.id)) })));
+  const employees = await Employee.find().sort({ lastName: 1, firstName: 1 }).lean();
+  if (req.query.lite === '1') return res.json(employees);
+  const list = await Promise.all(employees.map(async e => ({ ...e, qrCode: await getCachedQR(e.id) })));
   res.json(list);
 });
 
@@ -451,7 +461,10 @@ app.get('/api/books-qr', async (req, res) => {
     if (rawCenter.toLowerCase() === 'camarillo') filter = { center: { $regex: /^camarillo$/i } };
     else if (rawCenter.toLowerCase() === 'thousand oaks') filter = { $or: [{ center: { $regex: /^thousand oaks$/i } }, { center: { $exists: false } }, { center: null }, { center: '' }] };
     const books = await Book.find(filter).lean();
-    const list = await Promise.all(books.map(async b => ({ ...b, center: b.center || 'Thousand Oaks', qrCode: await QRCode.toDataURL(String(b.bookId)) })));
+    if (req.query.lite === '1') {
+      return res.json(books.map(b => ({ ...b, center: b.center || 'Thousand Oaks' })));
+    }
+    const list = await Promise.all(books.map(async b => ({ ...b, center: b.center || 'Thousand Oaks', qrCode: await getCachedQR(b.bookId) })));
     res.json(list);
   } catch (err) { res.status(500).json({ success: false }); }
 });
