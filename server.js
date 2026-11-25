@@ -384,6 +384,14 @@ app.get('/api/active-students', async (req, res) => {
   } catch (err) { res.status(500).json({ error: "Failed." }); }
 });
 
+app.delete('/api/active-students/:id', async (req, res) => {
+  try {
+    const cleanId = String(req.params.id || '').trim();
+    await ActiveStudentSession.deleteOne({ studentId: cleanId });
+    res.json({ success: true, message: 'Removed accidental check-in.' });
+  } catch (err) { res.status(500).json({ success: false, message: 'Failed to remove session.' }); }
+});
+
 app.get('/api/active-staff', async (req, res) => {
   try {
     const active = await ActiveStaffSession.find().sort({ checkInTime: 1 });

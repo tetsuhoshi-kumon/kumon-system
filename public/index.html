@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kumon Center Management System (v1.52)</title>
+  <title>Kumon Center Management System (v1.53)</title>
   <style>
     :root { --primary: #2980b9; --secondary: #27ae60; --warning: #e67e22; --danger: #e74c3c; --dark: #2c3e50; }
     * { box-sizing: border-box; }
@@ -89,7 +89,7 @@
 </div>
 
 <header class="no-print">
-  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.52</span></h1>
+  <h1>Kumon Center Kiosk <span id="versionBadge" style="font-size: 0.5em; vertical-align: middle; background: #34495e; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 10px;">v1.53</span></h1>
   <nav>
     <button class="active" onclick="switchTab('kiosk')">Check-In Kiosk</button>
     <button onclick="switchTab('lobby')">Lobby Board</button>
@@ -196,7 +196,7 @@
         <div style="display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0; background: #f8f9fa; padding: 10px 14px; border-radius: 6px; border: 1px solid #e1e4e8; flex-wrap: wrap;">
           <label style="font-weight: bold; color: #2c3e50;">Center Filter:</label>
           <select id="v141BookCenterFilter" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
-            <option value="all">View All Centers (v1.52)</option>
+            <option value="all">View All Centers (v1.53)</option>
             <option value="Camarillo">Camarillo Only</option>
             <option value="Thousand Oaks">Thousand Oaks Only</option>
           </select>
@@ -369,6 +369,9 @@
     } catch (e) {}
   }
 
+  let datalistAutoTimer = null;
+  let scanInFlight = false;
+
   (function initGlobalScanner() {
     let scanBuffer = ''; let lastCharTime = 0;
     window.addEventListener('keydown', (e) => {
@@ -377,6 +380,7 @@
       if (now - lastCharTime > 120) scanBuffer = '';
       lastCharTime = now;
       if (e.key === 'Enter') {
+        if (datalistAutoTimer) { clearTimeout(datalistAutoTimer); datalistAutoTimer = null; }
         const isBooks = document.getElementById('books').classList.contains('active');
         const code = scanBuffer.trim() || (isBooks ? document.getElementById('bookScanInput').value : document.getElementById('scanInput').value).trim();
         if (code.length >= 2) {
@@ -684,17 +688,24 @@
   function handleDatalistSelection(inputEl, ctx = 'kiosk') {
     if (inputEl.value.length > 0) inputEl.setAttribute('list', 'globalEntityDatalist');
     else inputEl.removeAttribute('list');
-    
+
+    if (datalistAutoTimer) { clearTimeout(datalistAutoTimer); datalistAutoTimer = null; }
     const v = inputEl.value.trim(); if (!v) return;
-    let id = null;
-    const m = (allStudents||[]).find(s=>s.id.toLowerCase()===v.toLowerCase()) || (allStaff||[]).find(e=>e.id.toLowerCase()===v.toLowerCase());
-    if (m) id = m.id;
-    if (!id) { const f = v.match(/—\s*([A-Za-z0-9_-]+)/); if (f) id = f[1].trim(); }
-    if (id) {
-      inputEl.value = id;
-      if (ctx === 'kiosk') { inputEl.blur(); handleScan(); }
-      else if (ctx === 'book') document.getElementById('bookScanInput')?.focus();
-    }
+
+    // Wait 300ms so rapid barcode scans finish completely before checking for an exact ID match
+    datalistAutoTimer = setTimeout(() => {
+      datalistAutoTimer = null;
+      const latest = inputEl.value.trim(); if (!latest) return;
+      let id = null;
+      const m = (allStudents||[]).find(s=>s.id.toLowerCase()===latest.toLowerCase()) || (allStaff||[]).find(e=>e.id.toLowerCase()===latest.toLowerCase());
+      if (m) id = m.id;
+      if (!id) { const f = latest.match(/—\s*([A-Za-z0-9_-]+)/); if (f) id = f[1].trim(); }
+      if (id) {
+        inputEl.value = id;
+        if (ctx === 'kiosk') { handleScan(); }
+        else if (ctx === 'book') document.getElementById('bookScanInput')?.focus();
+      }
+    }, 300);
   }
 
   function handleBookTitleSelection(inputEl) {
@@ -707,11 +718,26 @@
   }
 
   async function handleScan() {
+    if (datalistAutoTimer) { clearTimeout(datalistAutoTimer); datalistAutoTimer = null; }
+    if (scanInFlight) return;
     const inp = document.getElementById('scanInput'); const id = inp.value.trim(); if (!id) return;
-    const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scanId: id }) });
-    const data = await res.json();
-    if (res.ok) { playAudioTone('success'); showScanToast('success', data.message); inp.value = ''; refreshActive(); if(document.getElementById('staff').classList.contains('active')) refreshActiveStaff(); }
-    else { playAudioTone('error'); showScanToast('error', data.message || 'Scan error'); }
+    scanInFlight = true;
+    try {
+      const res = await fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scanId: id }) });
+      const data = await res.json();
+      if (res.ok) {
+        playAudioTone('success'); showScanToast('success', data.message);
+        inp.value = ''; inp.removeAttribute('list');
+        refreshActive();
+        if(document.getElementById('staff').classList.contains('active')) refreshActiveStaff();
+      } else {
+        playAudioTone('error'); showScanToast('error', data.message || 'Scan error');
+        inp.value = ''; inp.removeAttribute('list');
+      }
+    } finally {
+      scanInFlight = false;
+      if (document.getElementById('kiosk').classList.contains('active')) inp.focus();
+    }
   }
 
   async function refreshActive() {
@@ -750,7 +776,7 @@
         <td>${formatSubjectPill(s.subject)}</td><td>${s.checkInFormatted}</td>
         <td><div><strong>${s.minutesInCenter} mins</strong> (${pct}%)</div><div class="progress-bar-container"><div class="progress-bar-fill ${fill}" style="width:${pct}%"></div></div></td>
         <td><span class="time-badge ${badge}">${status}</span></td>
-        <td class="no-print"><button class="btn-action" style="font-size:12px;padding:4px 8px;" onclick="markReady('${s.studentId}')">Mark Ready</button> <button class="btn-danger" style="font-size:12px;padding:4px 8px;" onclick="manualCheckOut('${s.studentId}', '${s.firstName}')">Check Out</button></td>
+        <td class="no-print"><button class="btn-action" style="font-size:12px;padding:4px 8px;" onclick="markReady('${s.studentId}')">Mark Ready</button> <button class="btn-danger" style="font-size:12px;padding:4px 8px;" onclick="manualCheckOut('${s.studentId}', '${s.firstName}')">Check Out</button> <button style="font-size:12px;padding:4px 7px;background:#7f8c8d;color:white;border:none;cursor:pointer;" title="Remove accidental check-in (no log saved)" onclick="cancelCheckIn('${s.studentId}', '${s.firstName}')">✕</button></td>
       </tr>`;
     }).join('');
   }
@@ -770,6 +796,11 @@
     if (!confirm(`Check out ${name}?`)) return;
     const res = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: id }) });
     if (res.ok) { refreshActive(); refreshLobby(); }
+  }
+  async function cancelCheckIn(id, name) {
+    if (!confirm(`Remove accidental check-in for ${name}? (No attendance log will be saved.)`)) return;
+    const res = await fetch(`/api/active-students/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (res.ok) { showScanToast('success', `Removed ${name} from active list.`); refreshActive(); refreshLobby(); }
   }
   async function markReady(id) { await fetch('/api/ready-pickup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId: id }) }); refreshActive(); }
   async function refreshLobby() {
